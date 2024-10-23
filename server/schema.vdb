@@ -1,0 +1,6 @@
+create new database called "CRUxDrive";
+use "CRUxDrive";
+create new table called "users" columns "[{'userId' : 'string'}, {'email' : 'string'}, {'name':'string'}, {'folders':'string'}, {'files':'string'}, {'groups':'string'}, {'bookmarks':'string'}, {'picture':'string'}]" values "[]";
+create new table called "folders" columns "[{'S3Path' : 'string'}, {'name' : 'string'}, {'owner':'string'}, {'parentFolderS3Path':'string'}, {'isPasswordProtected':'boolean'}, {'password':'password'}, {'sharedWithUsers':'string'}, {'sharedWithGroups':'string'}, {'files':'string'}, {'subfolders':'string'}]" values "[]";
+create new table called "files" columns "[{'S3Path' : 'string'}, {'name' : 'string'}, {'size':'number'}, {'mimeType':'string'}, {'owner':'string'}, {'folderS3Path':'string'}, {'isPasswordProtected':'boolean'}, {'password':'password'}, {'sharedWithUsers':'string'}, {'sharedWithGroups':'string'}, {'uploadDate':'string'}]" values "[]";
+create new table called "groups" columns "[{'groupId' : 'string'}, {'name' : 'string'}, {'owner':'string'}, {'members':'string'}, {'isPublic':'boolean'}]" values "[]";
