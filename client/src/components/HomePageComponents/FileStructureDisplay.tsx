@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import FileCard from "./FileCard";
+import { AsyncResource } from "async_hooks";
 
 interface FileStructure {
   key: string;
@@ -8,11 +9,14 @@ interface FileStructure {
 }
 interface Folder {
   name: string;
+  key: string;
   files: FileStructure[];
   folders: Folder[];
 }
 
 type Props = { fileStructures: FileStructure[] };
+
+const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
 
 const parseFileStructure = (fileStructures: FileStructure[]): Folder[] => {
   const rootFolders: Folder[] = [];
@@ -33,7 +37,12 @@ const parseFileStructure = (fileStructures: FileStructure[]): Folder[] => {
       } else {
         currentFolderPath += part + "/";
         if (!folderMap[currentFolderPath]) {
-          const newFolder: Folder = { name: part, files: [], folders: [] };
+          const newFolder: Folder = {
+            name: part,
+            key: currentFolderPath,
+            files: [],
+            folders: [],
+          };
           folderMap[currentFolderPath] = newFolder;
           if (currentFolder) {
             currentFolder.folders.push(newFolder);
@@ -51,19 +60,96 @@ const parseFileStructure = (fileStructures: FileStructure[]): Folder[] => {
 
 const FileStructureDisplay = ({ fileStructures }: Props) => {
   const folderHierarchy = parseFileStructure(fileStructures);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [showUpload, setShowUpload] = useState(false);
+  const [File, setFile] = useState(null);
+
+  async function getS3SignedURL(key: string, type: string) {
+    const response = await fetch(`${SERVERPATH}/getUploadURL`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ key: key, contentType: type }),
+    });
+    const url = await response.json();
+    console.log(url);
+    await pushToS3(url, File);
+    return url;
+  }
+  async function pushToS3(url: string, file: any) {
+    console.log("pushing");
+    console.log(url);
+    const response = await fetch(String(url), {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      body: file,
+    });
+  }
+  const handleFileChange = (e: any) => {
+    console.log("File changed");
+    const file = e.target.files[0];
+    setFile(file);
+  };
+  async function handleFileSubmit() {
+    console.log("hi");
+    if (!File) return;
+    console.log("Handling submit");
+    const url = await getS3SignedURL(
+      `${Array.from(selectedItems)[0]}${File["name"]}`,
+      File["type"]
+    );
+  }
+
+  const toggleSelection = (key: string, folderOrNot: boolean) => {
+    setSelectedItems((prev) => {
+      const newSelected = new Set(prev);
+      if (newSelected.has(key)) {
+        newSelected.delete(key);
+        if (folderOrNot) {
+          setShowUpload(false);
+        }
+      } else {
+        newSelected.add(key);
+        if (folderOrNot && newSelected.size === 1) {
+          setShowUpload(true);
+        }
+      }
+      return newSelected;
+    });
+  };
+
   console.log(folderHierarchy);
   return (
-    <div style={styles.container}>
-      {folderHierarchy.map((folder) => (
-        <FileCard
-          key={folder.name}
-          file={{ key: folder.name, lastModified: "", size: "" }}
-          isFolder={true}
-          filesInsideFolder={folder.files}
-          foldersInsideFolder={folder.folders} // Pass subfolders
-        />
-      ))}
-    </div>
+    <>
+      {showUpload ? (
+        <>
+          <input type="file" multiple onChange={handleFileChange} />
+          <input
+            onClick={() => handleFileSubmit()}
+            type="button"
+            value="Submit"
+          />
+        </>
+      ) : (
+        <></>
+      )}
+      <div style={styles.container}>
+        {folderHierarchy.map((folder) => (
+          <FileCard
+            key={folder.name}
+            file={{ key: folder.name, lastModified: "", size: "" }}
+            isFolder={true}
+            filesInsideFolder={folder.files}
+            foldersInsideFolder={folder.folders}
+            toggleSelection={toggleSelection}
+            selectedItems={selectedItems}
+          />
+        ))}
+      </div>
+    </>
   );
 };
 

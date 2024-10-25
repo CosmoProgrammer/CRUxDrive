@@ -14,6 +14,7 @@ interface FileStructure {
 
 interface Folder {
   name: string;
+  key: string;
   files: FileStructure[];
   folders: Folder[];
 }
@@ -23,6 +24,8 @@ interface CardProps {
   isFolder: boolean;
   filesInsideFolder?: FileStructure[];
   foldersInsideFolder?: Folder[];
+  toggleSelection: (key: string, folderOrNot: boolean) => void;
+  selectedItems: Set<string>;
 }
 
 const FileCard = ({
@@ -30,8 +33,12 @@ const FileCard = ({
   isFolder,
   filesInsideFolder,
   foldersInsideFolder,
+  toggleSelection,
+  selectedItems,
 }: CardProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const itemKey = isFolder ? (file as Folder).key : (file as FileStructure).key;
+  const isSelected = selectedItems.has(itemKey);
 
   const toggleFolder = () => setIsOpen(!isOpen);
 
@@ -44,6 +51,12 @@ const FileCard = ({
     <div style={styles.card}>
       <div style={styles.cardHeader}>
         <div style={styles.iconAndName}>
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => toggleSelection(itemKey, isFolder)}
+            style={{ marginRight: "10px" }}
+          />
           {isFolder ? (
             <FaFolder color="#FDB813" style={{ marginRight: "10px" }} />
           ) : (
@@ -84,12 +97,20 @@ const FileCard = ({
               file={innerFolder}
               isFolder={true}
               filesInsideFolder={innerFolder.files}
-              foldersInsideFolder={innerFolder.folders} // Render nested folders
+              foldersInsideFolder={innerFolder.folders}
+              toggleSelection={toggleSelection}
+              selectedItems={selectedItems}
             />
           ))}
 
           {filesInsideFolder?.map((innerFile) => (
-            <FileCard key={innerFile.key} file={innerFile} isFolder={false} />
+            <FileCard
+              key={innerFile.key}
+              file={innerFile}
+              isFolder={false}
+              toggleSelection={toggleSelection}
+              selectedItems={selectedItems}
+            />
           ))}
         </div>
       )}

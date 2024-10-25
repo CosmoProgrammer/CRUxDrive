@@ -116,6 +116,20 @@ app.get(
   }
 );
 
+app.post("/getUploadURL", async (req: Request, res: Response) => {
+  console.log("Getting URL");
+  const key = req.body.key;
+  const contentType = req.body.contentType;
+  const command = new PutObjectCommand({
+    Bucket: BUCKET,
+    Key: key,
+    ContentType: contentType,
+  });
+  const url = await getSignedUrl(s3Client, command);
+  console.log(url);
+  return res.json(url);
+});
+
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
 });
