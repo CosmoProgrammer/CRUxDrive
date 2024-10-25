@@ -63,6 +63,8 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showUpload, setShowUpload] = useState(false);
   const [File, setFile] = useState<any[]>([]);
+  const [showCreateFolder, setShowCreateFolder] = useState(false);
+  const [folderName, setFolderName] = useState("");
 
   async function getS3SignedURL(key: string, type: string) {
     const response = await fetch(`${SERVERPATH}/getUploadURL`, {
@@ -76,6 +78,7 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
     console.log(url);
     return url;
   }
+
   async function pushToS3(url: string, file: any) {
     console.log("pushing");
     console.log(url);
@@ -110,6 +113,7 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
       await pushToS3(signedUrl, file); // Upload each file to S3
     }
   }
+
   async function handleDelete() {
     console.log("Deleting");
     console.log(selectedItems);
@@ -123,6 +127,7 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
     const reply = await response.json();
     console.log(reply);
   }
+
   const toggleSelection = (key: string, folderOrNot: boolean) => {
     setSelectedItems((prev) => {
       const newSelected = new Set(prev);
@@ -130,11 +135,18 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
         newSelected.delete(key);
         if (folderOrNot) {
           setShowUpload(false);
+          setShowCreateFolder(false);
+        }
+        if (folderOrNot && newSelected.size === 1) {
+          setShowUpload(true);
         }
       } else {
         newSelected.add(key);
         if (folderOrNot && newSelected.size === 1) {
           setShowUpload(true);
+        } else if (newSelected.size > 1) {
+          setShowUpload(false);
+          setShowCreateFolder(false);
         }
       }
       console.log(newSelected);
@@ -142,7 +154,29 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
     });
   };
 
-  //console.log(folderHierarchy);
+  const enableCreateFolder = () => {
+    setShowCreateFolder(true);
+  };
+
+  async function handleCreateFolderSubmit() {
+    let toUploadTo = Array.from(selectedItems)[0];
+    if (toUploadTo[-1] !== "/") {
+      toUploadTo = toUploadTo + "/";
+    }
+    const response = await fetch(`${SERVERPATH}/createFolder`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        key: toUploadTo,
+        name: folderName,
+      }),
+    });
+    const url = await response.json();
+    console.log(url);
+  }
+
   return (
     <>
       {showUpload ? (
@@ -156,14 +190,50 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
         </>
       ) : (
         <></>
-      )}
+      )}{" "}
+      <br />
       {selectedItems.size > 0 ? (
         <>
           <input onClick={handleDelete} type="button" value="Delete" />
         </>
       ) : (
         <></>
-      )}
+      )}{" "}
+      <br />
+      {showUpload ? (
+        <>
+          <input
+            onClick={enableCreateFolder}
+            type="button"
+            value="Create Folder"
+          />
+        </>
+      ) : (
+        <></>
+      )}{" "}
+      <br />
+      {showCreateFolder ? (
+        <>
+          <form>
+            <label>
+              Enter File Name
+              <input
+                type="text"
+                value={folderName}
+                onChange={(e) => setFolderName(e.target.value)}
+              />
+              <input
+                onClick={() => handleCreateFolderSubmit()}
+                type="button"
+                value="Submit"
+              />
+            </label>
+          </form>
+        </>
+      ) : (
+        <></>
+      )}{" "}
+      <br />
       <div style={styles.container}>
         {folderHierarchy.map((folder) => (
           <FileCard

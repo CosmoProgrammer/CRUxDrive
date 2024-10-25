@@ -143,6 +143,17 @@ app.post("/delete", async (req: Request, res: Response) => {
   return res.json("deleted");
 });
 
+app.post("/createFolder", async (req: Request, res: Response) => {
+  //const [key, name] = req.body;
+  //console.log(req.body);
+  const command = new PutObjectCommand({
+    Bucket: BUCKET,
+    Key: `${req.body.key}${req.body.name}/`,
+  });
+  const result = await s3Client.send(command);
+  return res.json("Created");
+});
+
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
 });
