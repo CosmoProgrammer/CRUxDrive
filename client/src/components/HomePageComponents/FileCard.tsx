@@ -28,6 +28,8 @@ interface CardProps {
   selectedItems: Set<string>;
 }
 
+const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
+
 const FileCard = ({
   file,
   isFolder,
@@ -42,19 +44,55 @@ const FileCard = ({
 
   const toggleFolder = () => setIsOpen(!isOpen);
 
+  const fetchFileURL = async (fileKey: string) => {
+    try {
+      const response = await fetch(`${SERVERPATH}/getDownloadURL`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ key: fileKey }),
+      });
+      const url = await response.json();
+      console.log(url);
+      window.location.href = url;
+    } catch (error) {
+      console.error("Error fetching file URL:", error);
+    }
+  };
+
+  const handleClick = () => {
+    if (!isFolder) {
+      fetchFileURL((file as FileStructure).key);
+      console.log("Fetching URL");
+    }
+  };
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleSelection(itemKey, isFolder);
+  };
+
   const folderLastModified =
     filesInsideFolder && filesInsideFolder.length > 0
       ? filesInsideFolder[0].lastModified
       : null;
 
   return (
-    <div style={{ ...styles.card, ...(isSelected ? styles.selectedCard : {}) }}>
+    <div
+      style={{
+        ...styles.card,
+        ...(isSelected ? styles.selectedCard : {}),
+        ...(isFolder ? {} : styles.fileButton),
+      }}
+      onClick={handleClick}
+    >
       <div style={styles.cardHeader}>
         <div style={styles.iconAndName}>
           <input
             type="checkbox"
             checked={isSelected}
-            onChange={() => toggleSelection(itemKey, isFolder)}
+            onClick={handleCheckboxClick}
             style={{ marginRight: "10px" }}
           />
           {isFolder ? (
@@ -136,6 +174,13 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "10px 0",
+  },
+  fileButton: {
+    cursor: "pointer",
+    transition: "background-color 0.2s ease",
+    "&:hover": {
+      backgroundColor: "#f0f0f0",
+    },
   },
   iconAndName: {
     display: "flex",

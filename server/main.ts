@@ -144,14 +144,23 @@ app.post("/delete", async (req: Request, res: Response) => {
 });
 
 app.post("/createFolder", async (req: Request, res: Response) => {
-  //const [key, name] = req.body;
-  //console.log(req.body);
   const command = new PutObjectCommand({
     Bucket: BUCKET,
     Key: `${req.body.key}${req.body.name}/`,
   });
   const result = await s3Client.send(command);
   return res.json("Created");
+});
+
+app.post("/getDownloadURL", async (req: Request, res: Response) => {
+  const { key } = req.body;
+  const command = new GetObjectCommand({
+    Bucket: BUCKET,
+    Key: key,
+  });
+  const url = await getSignedUrl(s3Client, command);
+  console.log(url);
+  return res.json(url);
 });
 
 app.listen(port, () => {
