@@ -10,6 +10,7 @@ import {
   GetObjectCommand,
   PutObjectCommand,
   ListObjectsV2Command,
+  DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import JWTMiddleware from "./middleware/JWT.ts";
@@ -128,6 +129,18 @@ app.post("/getUploadURL", async (req: Request, res: Response) => {
   const url = await getSignedUrl(s3Client, command);
   console.log(url);
   return res.json(url);
+});
+
+app.post("/delete", async (req: Request, res: Response) => {
+  const keys = req.body;
+  console.log(keys);
+  const command = new DeleteObjectsCommand({
+    Bucket: BUCKET,
+    Delete: { Objects: keys.map((key: string) => ({ Key: key })) },
+  });
+  const result = await s3Client.send(command);
+  console.log(result);
+  return res.json("deleted");
 });
 
 app.listen(port, () => {

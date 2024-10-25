@@ -62,7 +62,7 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
   const folderHierarchy = parseFileStructure(fileStructures);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showUpload, setShowUpload] = useState(false);
-  const [File, setFile] = useState(null);
+  const [File, setFile] = useState<any[]>([]);
 
   async function getS3SignedURL(key: string, type: string) {
     const response = await fetch(`${SERVERPATH}/getUploadURL`, {
@@ -74,7 +74,6 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
     });
     const url = await response.json();
     console.log(url);
-    await pushToS3(url, File);
     return url;
   }
   async function pushToS3(url: string, file: any) {
@@ -88,21 +87,42 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
       body: file,
     });
   }
+
   const handleFileChange = (e: any) => {
     console.log("File changed");
     const file = e.target.files[0];
-    setFile(file);
+    setFile(Array.from(e.target.files));
   };
+
   async function handleFileSubmit() {
     console.log("hi");
-    if (!File) return;
+    if (!File.length) {
+      return;
+    }
     console.log("Handling submit");
-    const url = await getS3SignedURL(
-      `${Array.from(selectedItems)[0]}${File["name"]}`,
-      File["type"]
-    );
+    for (const file of File) {
+      let toUploadTo = Array.from(selectedItems)[0];
+      if (toUploadTo[-1] !== "/") {
+        toUploadTo = toUploadTo + "/";
+      }
+      const fileKey = `${toUploadTo}${file.name}`;
+      const signedUrl = await getS3SignedURL(fileKey, file.type); // Get signed URL for each file
+      await pushToS3(signedUrl, file); // Upload each file to S3
+    }
   }
-
+  async function handleDelete() {
+    console.log("Deleting");
+    console.log(selectedItems);
+    const response = await fetch(`${SERVERPATH}/delete`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(Array.from(selectedItems)),
+    });
+    const reply = await response.json();
+    console.log(reply);
+  }
   const toggleSelection = (key: string, folderOrNot: boolean) => {
     setSelectedItems((prev) => {
       const newSelected = new Set(prev);
@@ -117,11 +137,12 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
           setShowUpload(true);
         }
       }
+      console.log(newSelected);
       return newSelected;
     });
   };
 
-  console.log(folderHierarchy);
+  //console.log(folderHierarchy);
   return (
     <>
       {showUpload ? (
@@ -132,6 +153,13 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
             type="button"
             value="Submit"
           />
+        </>
+      ) : (
+        <></>
+      )}
+      {selectedItems.size > 0 ? (
+        <>
+          <input onClick={handleDelete} type="button" value="Delete" />
         </>
       ) : (
         <></>

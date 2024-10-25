@@ -48,7 +48,7 @@ const FileCard = ({
       : null;
 
   return (
-    <div style={styles.card}>
+    <div style={{ ...styles.card, ...(isSelected ? styles.selectedCard : {}) }}>
       <div style={styles.cardHeader}>
         <div style={styles.iconAndName}>
           <input
@@ -126,6 +126,10 @@ const styles = {
     padding: "10px",
     marginBottom: "10px",
     width: "100%",
+  },
+  selectedCard: {
+    backgroundColor: "#e0f7fa",
+    border: "1px solid #4fc3f7",
   },
   cardHeader: {
     display: "flex",
