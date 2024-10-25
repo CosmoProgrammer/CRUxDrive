@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import FileStructureDisplay from "./HomePageComponents/FileStructureDisplay";
+
 const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
 
 const Home = () => {
   interface File {
     key: string;
-    size: number;
+    size: string;
     lastModified: string;
   }
   const navigate = useNavigate();
@@ -50,14 +52,17 @@ const Home = () => {
       {loading ? (
         <p>Loading files...</p>
       ) : (
-        <ul>
-          {files.map((file) => (
-            <li key={file.key}>
-              <b>{file.key}</b> - {file.size} bytes - Last modified:{" "}
-              {new Date(file.lastModified).toLocaleString()}
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul>
+            {files.map((file) => (
+              <li key={file.key}>
+                <b>{file.key}</b> - {file.size} bytes - Last modified:{" "}
+                {new Date(file.lastModified).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+          <FileStructureDisplay fileStructures={files} />
+        </>
       )}
     </>
   );
