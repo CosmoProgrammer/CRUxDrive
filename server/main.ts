@@ -14,6 +14,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import JWTMiddleware from "./middleware/JWT.ts";
+import bcrypt from "bcrypt";
 
 const app: Express = express();
 const port = Deno.env.get("PORT") || 3000;
@@ -154,13 +155,98 @@ app.post("/createFolder", async (req: Request, res: Response) => {
 
 app.post("/getDownloadURL", async (req: Request, res: Response) => {
   const { key } = req.body;
-  const command = new GetObjectCommand({
-    Bucket: BUCKET,
-    Key: key,
-  });
-  const url = await getSignedUrl(s3Client, command);
-  console.log(url);
-  return res.json(url);
+  const isLocked =
+    voidb(`select table "lockedfiles" columns "*" where "key == '${key}'";`)[0][
+      "data"
+    ].length > 0;
+  console.log(isLocked);
+  if (isLocked) {
+    return res.json(`/locked?key=${encodeURIComponent(key)}`);
+  } else {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+    });
+    const url = await getSignedUrl(s3Client, command);
+    console.log(url);
+    return res.json(url);
+  }
+});
+
+app.post("/lockFileFolder", async (req: Request, res: Response) => {
+  const { key, password } = req.body;
+  const saltRounds = 10;
+  const hashedPassword = await bcrypt.hash(password, saltRounds);
+  if (key[key.length - 1] === "/") {
+    const command = new ListObjectsV2Command({
+      Bucket: BUCKET,
+      Prefix: `${key}`,
+    });
+    const data = await s3Client.send(command);
+    const subKeys = data.Contents?.map((file) => ({
+      key: file.Key,
+    }));
+    const fileKeys = subKeys!
+      .filter((item) => !item.key!.endsWith("/"))
+      .map((item) => item.key);
+    fileKeys.forEach((fileKey) => {
+      if (
+        voidb(
+          `select table "lockedfiles" columns "*" where "key == '${key}'";`
+        )[0]["data"].length > 0
+      ) {
+        return res.status(400).json(`File ${fileKey} already locked`);
+      }
+    });
+    fileKeys.forEach((fileKey) => {
+      voidb(
+        `insert "[['${fileKey}','${hashedPassword}']]" into "lockedfiles" columns "*";`
+      );
+    });
+    return res.status(200).json("File Locked");
+  } else {
+    let f = voidb(
+      `select table "lockedfiles" columns "*" where "key == '${key}'";`
+    )[0]["data"];
+    if (f.length > 0) {
+      return res.status(400).json("File already locked");
+    }
+    voidb(
+      `insert "[['${key}','${hashedPassword}']]" into "lockedfiles" columns "*";`
+    );
+    return res.status(200).json("File Locked");
+  }
+});
+
+app.post("/validatePassword", async (req: Request, res: Response) => {
+  const { key, password } = req.body;
+  console.log(key, password);
+  const result = voidb(
+    `select table "lockedfiles" columns "*" where "key == '${key}'";`
+  )[0]["data"];
+  if (!result || result.length === 0) {
+    return res
+      .status(404)
+      .json({ error: "File not found or password incorrect" });
+  }
+  const storedHashedPassword = result[0]["password"];
+  const isMatch = await bcrypt.compare(password, storedHashedPassword);
+  if (!isMatch) {
+    return res
+      .status(401)
+      .json({ error: "File not found or password incorrect" });
+  }
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+    });
+    const url = await getSignedUrl(s3Client, command);
+    return res.json({ url });
+  } catch (error) {
+    console.error("Error generating signed URL:", error);
+    return res.status(500).json({ error: "Error generating download link" });
+  }
 });
 
 app.listen(port, () => {

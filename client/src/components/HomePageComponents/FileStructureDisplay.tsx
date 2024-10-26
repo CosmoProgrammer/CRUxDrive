@@ -65,6 +65,9 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
   const [File, setFile] = useState<any[]>([]);
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [folderName, setFolderName] = useState("");
+  const [showLock, setShowLock] = useState(false);
+  const [showLockFileField, setShowLockFileField] = useState(false);
+  const [lockedFilePassword, setLockedFilePassword] = useState("");
 
   async function getS3SignedURL(key: string, type: string) {
     const response = await fetch(`${SERVERPATH}/getUploadURL`, {
@@ -130,12 +133,17 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
 
   const toggleSelection = (key: string, folderOrNot: boolean) => {
     setSelectedItems((prev) => {
+      setShowLockFileField(false);
+      setShowCreateFolder(false);
       const newSelected = new Set(prev);
       if (newSelected.has(key)) {
         newSelected.delete(key);
         if (folderOrNot) {
           setShowUpload(false);
           setShowCreateFolder(false);
+        }
+        if (!folderOrNot && newSelected.size === 1) {
+          setShowLock(true);
         }
         if (folderOrNot && newSelected.size === 1) {
           setShowUpload(true);
@@ -144,10 +152,21 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
         newSelected.add(key);
         if (folderOrNot && newSelected.size === 1) {
           setShowUpload(true);
-        } else if (newSelected.size > 1) {
+          setShowLock(true);
+        }
+        if (newSelected.size > 1) {
           setShowUpload(false);
           setShowCreateFolder(false);
+          setShowLock(false);
         }
+        if (!folderOrNot && newSelected.size === 1) {
+          setShowLock(true);
+        }
+      }
+      if (newSelected.size === 0) {
+        setShowUpload(false);
+        setShowCreateFolder(false);
+        setShowLock(false);
       }
       console.log(newSelected);
       return newSelected;
@@ -175,6 +194,28 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
     });
     const url = await response.json();
     console.log(url);
+  }
+
+  async function handleLock() {
+    console.log(Array.from(selectedItems)[0]);
+    setShowLockFileField(true);
+  }
+
+  async function handleLockPasswordSubmit() {
+    console.log(lockedFilePassword);
+    console.log(Array.from(selectedItems)[0]);
+    const response = await fetch(`${SERVERPATH}/lockFileFolder`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        key: Array.from(selectedItems)[0],
+        password: lockedFilePassword,
+      }),
+    });
+    const result = await response.json();
+    console.log(result);
   }
 
   return (
@@ -224,6 +265,36 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
               />
               <input
                 onClick={() => handleCreateFolderSubmit()}
+                type="button"
+                value="Submit"
+              />
+            </label>
+          </form>
+        </>
+      ) : (
+        <></>
+      )}{" "}
+      <br />
+      {showLock ? (
+        <>
+          <input onClick={handleLock} type="button" value="Lock File/Folder" />
+        </>
+      ) : (
+        <></>
+      )}{" "}
+      <br />
+      {showLockFileField ? (
+        <>
+          <form>
+            <label>
+              Enter Password
+              <input
+                type="password"
+                value={lockedFilePassword}
+                onChange={(e) => setLockedFilePassword(e.target.value)}
+              />
+              <input
+                onClick={() => handleLockPasswordSubmit()}
                 type="button"
                 value="Submit"
               />
