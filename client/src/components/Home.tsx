@@ -13,6 +13,7 @@ const Home = () => {
   const navigate = useNavigate();
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showRaw, setShowRaw] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -46,6 +47,14 @@ const Home = () => {
     }
   };
 
+  const handleRawButton = () => {
+    if (showRaw === false) {
+      setShowRaw(true);
+    } else {
+      setShowRaw(false);
+    }
+  };
+
   return (
     <>
       <h1>Your Files</h1>
@@ -53,19 +62,41 @@ const Home = () => {
         <p>Loading files...</p>
       ) : (
         <>
-          <ul>
-            {files.map((file) => (
-              <li key={file.key}>
-                <b>{file.key}</b> - {file.size} bytes - Last modified:{" "}
-                {new Date(file.lastModified).toLocaleString()}
-              </li>
-            ))}
-          </ul>
           <FileStructureDisplay fileStructures={files} />
+          <input
+            type="button"
+            value="Show Raw"
+            onClick={handleRawButton}
+            style={styles.lockButton}
+          />
+          {showRaw && (
+            <ul>
+              {files.map((file) => (
+                <li key={file.key}>
+                  <b>{file.key}</b> - {file.size} bytes - Last modified:{" "}
+                  {new Date(file.lastModified).toLocaleString()}
+                </li>
+              ))}
+            </ul>
+          )}
         </>
       )}
     </>
   );
+};
+
+const styles: { [key: string]: React.CSSProperties } = {
+  lockButton: {
+    display: "inline-block",
+    padding: "10px 15px",
+    margin: "10px 0",
+    fontSize: "16px",
+    color: "#fff",
+    backgroundColor: "#FF9800",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
 };
 
 export default Home;

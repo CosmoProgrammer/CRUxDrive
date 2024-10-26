@@ -174,7 +174,11 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
   };
 
   const enableCreateFolder = () => {
-    setShowCreateFolder(true);
+    if (showCreateFolder === false) {
+      setShowCreateFolder(true);
+    } else {
+      setShowCreateFolder(false);
+    }
   };
 
   async function handleCreateFolderSubmit() {
@@ -198,7 +202,11 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
 
   async function handleLock() {
     console.log(Array.from(selectedItems)[0]);
-    setShowLockFileField(true);
+    if (showLockFileField === false) {
+      setShowLockFileField(true);
+    } else {
+      setShowLockFileField(false);
+    }
   }
 
   async function handleLockPasswordSubmit() {
@@ -219,93 +227,91 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
   }
 
   return (
-    <>
-      {showUpload ? (
-        <>
-          <input type="file" multiple onChange={handleFileChange} />
-          <input
-            onClick={() => handleFileSubmit()}
-            type="button"
-            value="Submit"
-          />
-        </>
-      ) : (
-        <></>
-      )}{" "}
-      <br />
-      {selectedItems.size > 0 ? (
-        <>
-          <input onClick={handleDelete} type="button" value="Delete" />
-        </>
-      ) : (
-        <></>
-      )}{" "}
-      <br />
-      {showUpload ? (
-        <>
-          <input
-            onClick={enableCreateFolder}
-            type="button"
-            value="Create Folder"
-          />
-        </>
-      ) : (
-        <></>
-      )}{" "}
-      <br />
-      {showCreateFolder ? (
-        <>
-          <form>
-            <label>
-              Enter File Name
+    <div style={styles.mainContainer}>
+      <div style={styles.leftContainer}>
+        {showUpload && (
+          <div style={styles.uploadContainer}>
+            <input
+              type="file"
+              multiple
+              onChange={handleFileChange}
+              style={styles.fileInput}
+            />
+            <button onClick={handleFileSubmit} style={styles.submitButton}>
+              Submit
+            </button>
+          </div>
+        )}
+        <br />
+
+        {selectedItems.size > 0 && (
+          <>
+            <button onClick={handleDelete} style={styles.deleteButton}>
+              Delete
+            </button>
+          </>
+        )}
+        <br />
+
+        {showUpload && (
+          <>
+            <button onClick={enableCreateFolder} style={styles.button}>
+              Create Folder
+            </button>
+          </>
+        )}
+        <br />
+
+        {showCreateFolder && (
+          <form style={styles.form}>
+            <label style={styles.label}>
+              Enter Folder Name
               <input
                 type="text"
                 value={folderName}
                 onChange={(e) => setFolderName(e.target.value)}
-              />
-              <input
-                onClick={() => handleCreateFolderSubmit()}
-                type="button"
-                value="Submit"
+                style={styles.input}
               />
             </label>
+            <button
+              onClick={handleCreateFolderSubmit}
+              style={styles.submitButton}
+            >
+              Submit
+            </button>
           </form>
-        </>
-      ) : (
-        <></>
-      )}{" "}
-      <br />
-      {showLock ? (
-        <>
-          <input onClick={handleLock} type="button" value="Lock File/Folder" />
-        </>
-      ) : (
-        <></>
-      )}{" "}
-      <br />
-      {showLockFileField ? (
-        <>
-          <form>
-            <label>
+        )}
+        <br />
+
+        {showLock && (
+          <button onClick={handleLock} style={styles.lockButton}>
+            Lock File/Folder
+          </button>
+        )}
+        <br />
+
+        {showLockFileField && (
+          <form style={styles.form}>
+            <label style={styles.label}>
               Enter Password
               <input
                 type="password"
                 value={lockedFilePassword}
                 onChange={(e) => setLockedFilePassword(e.target.value)}
-              />
-              <input
-                onClick={() => handleLockPasswordSubmit()}
-                type="button"
-                value="Submit"
+                style={styles.input}
               />
             </label>
+            <button
+              onClick={handleLockPasswordSubmit}
+              style={styles.submitButton}
+            >
+              Submit
+            </button>
           </form>
-        </>
-      ) : (
-        <></>
-      )}{" "}
+        )}
+      </div>
       <br />
-      <div style={styles.container}>
+      <div style={styles.rightContainer}>
         {folderHierarchy.map((folder) => (
           <FileCard
             key={folder.name}
@@ -318,15 +324,104 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
           />
         ))}
       </div>
-    </>
+    </div>
   );
 };
 
-const styles = {
-  container: {
-    maxWidth: "900px",
-    margin: "0 auto",
+const styles: { [key: string]: React.CSSProperties } = {
+  mainContainer: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
     padding: "20px",
+    fontFamily: "Arial, sans-serif",
+  },
+  leftContainer: {
+    width: "35%",
+    padding: "10px",
+    borderRight: "1px solid #ddd",
+  },
+  rightContainer: {
+    width: "70%",
+    padding: "10px",
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+  },
+  uploadContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    marginBottom: "20px",
+  },
+  fileInput: {
+    padding: "8px",
+    fontSize: "14px",
+    borderRadius: "5px",
+    border: "1px solid #ddd",
+    cursor: "pointer",
+    width: "60%",
+  },
+  submitButton: {
+    padding: "10px 15px",
+    fontSize: "16px",
+    color: "#fff",
+    backgroundColor: "#4CAF50",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  button: {
+    display: "inline-block",
+    padding: "10px 15px",
+    margin: "10px 0",
+    fontSize: "16px",
+    color: "#fff",
+    backgroundColor: "#4CAF50",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  deleteButton: {
+    display: "inline-block",
+    padding: "10px 15px",
+    margin: "10px 0",
+    fontSize: "16px",
+    color: "#fff",
+    backgroundColor: "#f44336",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  lockButton: {
+    display: "inline-block",
+    padding: "10px 15px",
+    margin: "10px 0",
+    fontSize: "16px",
+    color: "#fff",
+    backgroundColor: "#FF9800",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+    marginBottom: "20px",
+  },
+  label: {
+    fontSize: "14px",
+    fontWeight: "bold",
+    marginBottom: "5px",
+    width: "90%",
+  },
+  input: {
+    padding: "8px",
+    fontSize: "14px",
+    borderRadius: "5px",
+    border: "1px solid #ddd",
+    width: "100%",
   },
 };
 

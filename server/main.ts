@@ -110,7 +110,7 @@ app.get(
         lastModified: file.LastModified,
       }));
 
-      return res.json({ fileStructure });
+      return res.status(200).json({ fileStructure });
     } catch (e) {
       console.error(e);
       return res.status(500).json({ message: "File fetching failed" });
@@ -129,7 +129,7 @@ app.post("/getUploadURL", async (req: Request, res: Response) => {
   });
   const url = await getSignedUrl(s3Client, command);
   console.log(url);
-  return res.json(url);
+  return res.status(200).json(url);
 });
 
 app.post("/delete", async (req: Request, res: Response) => {
@@ -141,7 +141,7 @@ app.post("/delete", async (req: Request, res: Response) => {
   });
   const result = await s3Client.send(command);
   console.log(result);
-  return res.json("deleted");
+  return res.status(200).json("deleted");
 });
 
 app.post("/createFolder", async (req: Request, res: Response) => {
@@ -150,7 +150,7 @@ app.post("/createFolder", async (req: Request, res: Response) => {
     Key: `${req.body.key}${req.body.name}/`,
   });
   const result = await s3Client.send(command);
-  return res.json("Created");
+  return res.status(200).json("Created");
 });
 
 app.post("/getDownloadURL", async (req: Request, res: Response) => {
@@ -161,7 +161,7 @@ app.post("/getDownloadURL", async (req: Request, res: Response) => {
     ].length > 0;
   console.log(isLocked);
   if (isLocked) {
-    return res.json(`/locked?key=${encodeURIComponent(key)}`);
+    return res.status(200).json(`/locked?key=${encodeURIComponent(key)}`);
   } else {
     const command = new GetObjectCommand({
       Bucket: BUCKET,
@@ -169,7 +169,7 @@ app.post("/getDownloadURL", async (req: Request, res: Response) => {
     });
     const url = await getSignedUrl(s3Client, command);
     console.log(url);
-    return res.json(url);
+    return res.status(200).json(url);
   }
 });
 

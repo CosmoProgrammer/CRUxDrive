@@ -5,6 +5,13 @@ import {
   FaChevronDown,
   FaChevronUp,
 } from "react-icons/fa";
+import {
+  MdImage,
+  MdPictureAsPdf,
+  MdTextSnippet,
+  MdAudiotrack,
+  MdVideocam,
+} from "react-icons/md";
 
 interface FileStructure {
   key: string;
@@ -78,6 +85,47 @@ const FileCard = ({
       ? filesInsideFolder[0].lastModified
       : null;
 
+  const getFileIcon = (fileName: string) => {
+    const extension = fileName.split(".").pop()!.toLowerCase();
+    switch (extension) {
+      case "jpg":
+      case "jpeg":
+      case "png":
+      case "gif":
+      case "bmp":
+        return <MdImage color="#4caf50" style={{ marginRight: "10px" }} />;
+      case "pdf":
+        return (
+          <MdPictureAsPdf color="#f44336" style={{ marginRight: "10px" }} />
+        );
+      case "txt":
+      case "doc":
+      case "docx":
+        return (
+          <MdTextSnippet color="#2196f3" style={{ marginRight: "10px" }} />
+        );
+      case "mp3":
+      case "wav":
+      case "aac":
+        return <MdAudiotrack color="#9c27b0" style={{ marginRight: "10px" }} />;
+      case "mp4":
+      case "mov":
+      case "avi":
+      case "mkv":
+        return <MdVideocam color="#ff9800" style={{ marginRight: "10px" }} />;
+      default:
+        return <FaFileAlt color="#4285F4" style={{ marginRight: "10px" }} />;
+    }
+  };
+
+  function formatFileSize(b: string) {
+    let bytes = parseFloat(b);
+    if (bytes === 0) return "0 Bytes";
+    const units = ["Bytes", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + " " + units[i];
+  }
+
   return (
     <div
       style={{
@@ -98,11 +146,13 @@ const FileCard = ({
           {isFolder ? (
             <FaFolder color="#FDB813" style={{ marginRight: "10px" }} />
           ) : (
-            <FaFileAlt color="#4285F4" style={{ marginRight: "10px" }} />
+            getFileIcon((file as FileStructure).key)
           )}
 
           <span style={styles.fileName}>
-            {isFolder ? (file as Folder).name : (file as FileStructure).key}
+            {isFolder
+              ? (file as Folder).name
+              : (file as FileStructure).key.split("/").pop()}
           </span>
 
           {isFolder && (
@@ -113,7 +163,9 @@ const FileCard = ({
         </div>
 
         <div style={styles.fileInfo}>
-          {!isFolder && <span>{(file as FileStructure).size}</span>}
+          {!isFolder && (
+            <span>{formatFileSize((file as FileStructure).size)}</span>
+          )}
           {isFolder && folderLastModified && (
             <span>{new Date(folderLastModified).toLocaleDateString()}</span>
           )}
