@@ -5,6 +5,7 @@ import { Routes as Switch, Route } from "react-router-dom";
 import Login from "./components/Login";
 import Home from "./components/Home";
 import LockedFileAccess from "./components/HomePageComponents/LockedFileAccess";
+import SharedWithMe from "./components/SharedWithMe";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/home" element={<Home />} />
         <Route path="/locked" element={<LockedFileAccess />} />
+        <Route path="/shared" element={<SharedWithMe />} />
         <Route path="/" element={<>home</>} />
       </Switch>
     </>

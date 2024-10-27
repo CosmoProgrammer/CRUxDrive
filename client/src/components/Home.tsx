@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import FileStructureDisplay from "./HomePageComponents/FileStructureDisplay";
+import Sidebar from "./Sidebar";
 
 const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
 
@@ -9,6 +10,7 @@ const Home = () => {
     key: string;
     size: string;
     lastModified: string;
+    redirectKey: string;
   }
   const navigate = useNavigate();
   const [files, setFiles] = useState<File[]>([]);
@@ -57,12 +59,13 @@ const Home = () => {
 
   return (
     <>
+      <Sidebar />
       <h1>Your Files</h1>
       {loading ? (
         <p>Loading files...</p>
       ) : (
         <>
-          <FileStructureDisplay fileStructures={files} />
+          <FileStructureDisplay fileStructures={files} showButtons={true} />
           <input
             type="button"
             value="Show Raw"

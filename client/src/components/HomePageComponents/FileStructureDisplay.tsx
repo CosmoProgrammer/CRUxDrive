@@ -6,15 +6,17 @@ interface FileStructure {
   key: string;
   size: string;
   lastModified: string;
+  redirectKey: string;
 }
 interface Folder {
   name: string;
   key: string;
   files: FileStructure[];
   folders: Folder[];
+  redirectKey: string;
 }
 
-type Props = { fileStructures: FileStructure[] };
+type Props = { fileStructures: FileStructure[]; showButtons: boolean };
 
 const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
 
@@ -42,6 +44,7 @@ const parseFileStructure = (fileStructures: FileStructure[]): Folder[] => {
             key: currentFolderPath,
             files: [],
             folders: [],
+            redirectKey: currentFolderPath,
           };
           folderMap[currentFolderPath] = newFolder;
           if (currentFolder) {
@@ -54,11 +57,11 @@ const parseFileStructure = (fileStructures: FileStructure[]): Folder[] => {
       }
     });
   });
-
+  console.log(rootFolders);
   return rootFolders;
 };
 
-const FileStructureDisplay = ({ fileStructures }: Props) => {
+const FileStructureDisplay = ({ fileStructures, showButtons }: Props) => {
   const folderHierarchy = parseFileStructure(fileStructures);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showUpload, setShowUpload] = useState(false);
@@ -68,6 +71,8 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
   const [showLock, setShowLock] = useState(false);
   const [showLockFileField, setShowLockFileField] = useState(false);
   const [lockedFilePassword, setLockedFilePassword] = useState("");
+  const [showShare, setShowShare] = useState(false);
+  const [emailToShare, setEmailToShare] = useState("");
 
   async function getS3SignedURL(key: string, type: string) {
     const response = await fetch(`${SERVERPATH}/getUploadURL`, {
@@ -181,6 +186,34 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
     }
   };
 
+  const enableShare = () => {
+    if (showShare === false) {
+      setShowShare(true);
+    } else {
+      setShowShare(false);
+    }
+    console.log(selectedItems);
+  };
+
+  async function handleShareEmailSubmit(e: any) {
+    e.preventDefault();
+    console.log("sharing");
+    console.log(selectedItems);
+    console.log(emailToShare);
+    const response = await fetch(`${SERVERPATH}/shareToEmail`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        items: Array.from(selectedItems),
+        email: emailToShare,
+      }),
+    });
+    const reply = await response.json();
+    console.log(reply);
+  }
+
   async function handleCreateFolderSubmit() {
     let toUploadTo = Array.from(selectedItems)[0];
     if (toUploadTo[-1] !== "/") {
@@ -227,104 +260,164 @@ const FileStructureDisplay = ({ fileStructures }: Props) => {
   }
 
   return (
-    <div style={styles.mainContainer}>
-      <div style={styles.leftContainer}>
-        {showUpload && (
-          <div style={styles.uploadContainer}>
-            <input
-              type="file"
-              multiple
-              onChange={handleFileChange}
-              style={styles.fileInput}
-            />
-            <button onClick={handleFileSubmit} style={styles.submitButton}>
-              Submit
-            </button>
+    <>
+      {showButtons && (
+        <div style={styles.mainContainer}>
+          <div style={styles.leftContainer}>
+            {showUpload && (
+              <div style={styles.uploadContainer}>
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileChange}
+                  style={styles.fileInput}
+                />
+                <button onClick={handleFileSubmit} style={styles.submitButton}>
+                  Submit
+                </button>
+              </div>
+            )}
+            <br />
+
+            {selectedItems.size > 0 && (
+              <>
+                <button onClick={handleDelete} style={styles.deleteButton}>
+                  Delete
+                </button>
+              </>
+            )}
+            <br />
+
+            {showUpload && (
+              <>
+                <button onClick={enableCreateFolder} style={styles.button}>
+                  Create Folder
+                </button>
+              </>
+            )}
+            <br />
+
+            {showCreateFolder && (
+              <form style={styles.form}>
+                <label style={styles.label}>
+                  Enter Folder Name
+                  <input
+                    type="text"
+                    value={folderName}
+                    onChange={(e) => setFolderName(e.target.value)}
+                    style={styles.input}
+                  />
+                </label>
+                <button
+                  onClick={handleCreateFolderSubmit}
+                  style={styles.submitButton}
+                >
+                  Submit
+                </button>
+              </form>
+            )}
+            <br />
+
+            {showLock && (
+              <button onClick={handleLock} style={styles.lockButton}>
+                Lock File/Folder
+              </button>
+            )}
+            <br />
+
+            {showLockFileField && (
+              <form style={styles.form}>
+                <label style={styles.label}>
+                  Enter Password
+                  <input
+                    type="password"
+                    value={lockedFilePassword}
+                    onChange={(e) => setLockedFilePassword(e.target.value)}
+                    style={styles.input}
+                  />
+                </label>
+                <button
+                  onClick={handleLockPasswordSubmit}
+                  style={styles.submitButton}
+                >
+                  Submit
+                </button>
+              </form>
+            )}
+
+            {selectedItems.size > 0 && (
+              <button onClick={enableShare} style={styles.lockButton}>
+                Share File(s)/Folder(s)
+              </button>
+            )}
+
+            {showShare && (
+              <form style={styles.form}>
+                <label style={styles.label}>
+                  Enter Email Address
+                  <input
+                    type="email"
+                    value={emailToShare}
+                    onChange={(e) => setEmailToShare(e.target.value)}
+                    style={styles.input}
+                  />
+                </label>
+                <button
+                  onClick={handleShareEmailSubmit}
+                  style={styles.submitButton}
+                >
+                  Submit
+                </button>
+              </form>
+            )}
+            <br />
           </div>
-        )}
-        <br />
-
-        {selectedItems.size > 0 && (
-          <>
-            <button onClick={handleDelete} style={styles.deleteButton}>
-              Delete
-            </button>
-          </>
-        )}
-        <br />
-
-        {showUpload && (
-          <>
-            <button onClick={enableCreateFolder} style={styles.button}>
-              Create Folder
-            </button>
-          </>
-        )}
-        <br />
-
-        {showCreateFolder && (
-          <form style={styles.form}>
-            <label style={styles.label}>
-              Enter Folder Name
-              <input
-                type="text"
-                value={folderName}
-                onChange={(e) => setFolderName(e.target.value)}
-                style={styles.input}
+          <br />
+          <div style={styles.rightContainer}>
+            {folderHierarchy.map((folder) => (
+              <FileCard
+                key={folder.name}
+                file={{
+                  key: folder.name,
+                  lastModified: "",
+                  size: "",
+                  name: folder.name,
+                  redirectKey: folder.redirectKey,
+                }}
+                isFolder={true}
+                filesInsideFolder={folder.files}
+                foldersInsideFolder={folder.folders}
+                toggleSelection={toggleSelection}
+                selectedItems={selectedItems}
+                redirectKey={folder.redirectKey}
               />
-            </label>
-            <button
-              onClick={handleCreateFolderSubmit}
-              style={styles.submitButton}
-            >
-              Submit
-            </button>
-          </form>
-        )}
-        <br />
-
-        {showLock && (
-          <button onClick={handleLock} style={styles.lockButton}>
-            Lock File/Folder
-          </button>
-        )}
-        <br />
-
-        {showLockFileField && (
-          <form style={styles.form}>
-            <label style={styles.label}>
-              Enter Password
-              <input
-                type="password"
-                value={lockedFilePassword}
-                onChange={(e) => setLockedFilePassword(e.target.value)}
-                style={styles.input}
-              />
-            </label>
-            <button
-              onClick={handleLockPasswordSubmit}
-              style={styles.submitButton}
-            >
-              Submit
-            </button>
-          </form>
-        )}
-      </div>
-      <br />
-      <div style={styles.rightContainer}>
-        {folderHierarchy.map((folder) => (
-          <FileCard
-            key={folder.name}
-            file={{ key: folder.name, lastModified: "", size: "" }}
-            isFolder={true}
-            filesInsideFolder={folder.files}
-            foldersInsideFolder={folder.folders}
-            toggleSelection={toggleSelection}
-            selectedItems={selectedItems}
-          />
-        ))}
-      </div>
-    </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {!showButtons && (
+        <div style={styles.rightContainer}>
+          {folderHierarchy.map((folder) => (
+            <FileCard
+              key={folder.name}
+              file={{
+                key: folder.name,
+                lastModified: "",
+                size: "",
+                name: folder.name,
+                redirectKey: folder.redirectKey,
+              }}
+              isFolder={true}
+              filesInsideFolder={folder.files}
+              foldersInsideFolder={folder.folders}
+              toggleSelection={toggleSelection}
+              selectedItems={selectedItems}
+              redirectKey={folder.redirectKey}
+            />
+          ))}
+        </div>
+      )}
+    </>
   );
 };
 

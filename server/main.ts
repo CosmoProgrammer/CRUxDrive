@@ -11,6 +11,7 @@ import {
   PutObjectCommand,
   ListObjectsV2Command,
   DeleteObjectsCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import JWTMiddleware from "./middleware/JWT.ts";
@@ -27,6 +28,13 @@ const JWT_SECRET = Deno.env.get("JWT_SECRET");
 const BUCKET = Deno.env.get("BUCKET");
 const accessKeyId = Deno.env.get("accessKeyId") || "";
 const secretAccessKey = Deno.env.get("secretAccessKey") || "";
+
+interface File {
+  key: string | undefined;
+  size: number | undefined;
+  lastModified: Date | undefined;
+  redirectKey: string | undefined;
+}
 
 const s3Client = new S3Client({
   region: "eu-north-1",
@@ -50,6 +58,8 @@ app.post("/login", async (req: Request, res: Response) => {
   }
 
   const { token } = req.body;
+
+  console.log(token);
   if (!token) {
     return res.status(400).json({ message: "Token missing" });
   }
@@ -71,7 +81,27 @@ app.post("/login", async (req: Request, res: Response) => {
     )[0].data.map((pair: any) => pair.userId);
     if (userIds.indexOf(payload.sub) === -1) {
       voidb(
-        `insert "[['${payload.sub}','${payload.email}','${payload.name}','','','','', '${payload.picture}']]" into "users" columns "*";`
+        `insert "[['${payload.sub}','${payload.email}','${payload.name}', '${payload.picture}']]" into "users" columns "*";`
+      );
+      //console.log(`${payload.sub}/`);
+      const command = new PutObjectCommand({
+        Bucket: BUCKET,
+        Key: `${payload.sub}/`,
+      });
+      const result = await s3Client.send(command);
+      const command2 = new PutObjectCommand({
+        Bucket: BUCKET,
+        Key: `${payload.sub}/welcome/`,
+      });
+      const result2 = await s3Client.send(command2);
+      voidb(
+        `create new table "${payload.sub}_FilesFolders" with columns "[{'key':'string'}]" and values "[]"`
+      );
+      voidb(
+        `create new table "${payload.sub}_Groups" with columns "[{'groupID':'string'}]" and values "[]"`
+      );
+      voidb(
+        `create new table "${payload.sub}_Bookmarks" with columns "[{'key':'string'}]" and values "[]"`
       );
     }
     const jwtToken = jwt.sign(
@@ -103,13 +133,13 @@ app.get(
         Prefix: `${id}/`,
       });
       const data = await s3Client.send(command);
-
       const fileStructure = data.Contents?.map((file) => ({
         key: file.Key,
         size: file.Size,
         lastModified: file.LastModified,
+        redirectKey: file.Key,
       }));
-
+      console.log(fileStructure);
       return res.status(200).json({ fileStructure });
     } catch (e) {
       console.error(e);
@@ -249,6 +279,124 @@ app.post("/validatePassword", async (req: Request, res: Response) => {
   }
 });
 
+app.post("/shareToEmail", async (req: Request, res: Response) => {
+  const { items, email } = req.body;
+  console.log("HI");
+  console.log(items, email);
+  const ids = voidb(
+    `select table "users" columns "['email', 'userId']" where "email === '${email}'"`
+  )[0]["data"];
+  console.log(ids);
+  if (ids.length === 0) {
+    return res.status(404).json("Email Not Found");
+  }
+  const id = ids[0]["userId"];
+  console.log(
+    voidb(
+      `insert "${JSON.stringify(items.map((element: any) => [element])).replace(
+        /"/g,
+        "'"
+      )}" into "${id}_FilesFolders" columns "*";`
+    )
+  );
+  return res.status(200).json("Shared");
+});
+
+app.get(
+  "/getSharedFilesFolders",
+  JWTMiddleware,
+  async (req: Request, res: Response) => {
+    const { id, email } = req.body.user;
+    //console.log(id);
+    try {
+      const sharedFiles = voidb(
+        `select table "${id}_FilesFolders" columns "*";`
+      )[0]
+        ["data"].map((element: any) => [element.key])
+        .flat();
+      //console.log(sharedFiles);
+      let fileStructure = await getSharedFilesInfo(sharedFiles);
+      //console.log(fileStructure);
+      return res.status(200).json({ fileStructure });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ message: "File fetching failed" });
+    }
+  }
+);
+
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
 });
+
+async function getSharedFilesInfo(keys: string[]) {
+  const results = [];
+  for (const key of keys) {
+    if (key.endsWith("/")) {
+      let sharedFolder = key.match(/[^/]+\/$/)![0];
+      const folderInfo = {
+        key: "SharedObjects/" + sharedFolder,
+        size: 0,
+        lastModified: new Date().toISOString(),
+        redirectKey: sharedFolder,
+      };
+      results.push(folderInfo);
+      const folderContents = await listFolderContents(key, sharedFolder);
+      results.push(...folderContents);
+    } else {
+      const fileInfo = await getFileInfo(key);
+      if (fileInfo) results.push(fileInfo);
+    }
+  }
+  return results;
+}
+
+async function listFolderContents(prefix: string, rootFolder: string) {
+  //console.log("Getting folder contents");
+  //console.log(prefix);
+  const folderContents: File[] = [];
+  const command = new ListObjectsV2Command({
+    Bucket: BUCKET,
+    Prefix: prefix,
+  });
+  const { Contents } = await s3Client.send(command);
+  //console.log(Contents);
+  Contents?.forEach((item) => {
+    //console.log("beofre   ");
+    //console.log(item.Key);
+    if (!item.Key!.endsWith("/")) {
+      //console.log("hi");
+      folderContents.push({
+        key:
+          "SharedObjects/" +
+          item.Key!.substring(item.Key!.lastIndexOf(rootFolder)),
+        size: item.Size,
+        lastModified: item.LastModified,
+        redirectKey: item.Key,
+      });
+    }
+  });
+
+  return folderContents;
+}
+
+async function getFileInfo(key: string) {
+  try {
+    //console.log(key.split("/").filter(Boolean).slice(-1)[0]);
+    const command = new HeadObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+    });
+    const metadata = await s3Client.send(command);
+
+    return {
+      key: "SharedObjects/" + key.split("/").filter(Boolean).slice(-1)[0],
+      size: metadata.ContentLength,
+      lastModified: metadata.LastModified,
+      redirectKey: key,
+    };
+  } catch (error) {
+    console.error(`Error retrieving file info for ${key}:`, error);
+    return null;
+  }
+}

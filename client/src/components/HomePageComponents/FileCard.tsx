@@ -17,6 +17,7 @@ interface FileStructure {
   key: string;
   lastModified: string;
   size: string;
+  redirectKey: string;
 }
 
 interface Folder {
@@ -24,6 +25,7 @@ interface Folder {
   key: string;
   files: FileStructure[];
   folders: Folder[];
+  redirectKey: string;
 }
 
 interface CardProps {
@@ -33,6 +35,7 @@ interface CardProps {
   foldersInsideFolder?: Folder[];
   toggleSelection: (key: string, folderOrNot: boolean) => void;
   selectedItems: Set<string>;
+  redirectKey: string;
 }
 
 const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
@@ -44,6 +47,7 @@ const FileCard = ({
   foldersInsideFolder,
   toggleSelection,
   selectedItems,
+  redirectKey,
 }: CardProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const itemKey = isFolder ? (file as Folder).key : (file as FileStructure).key;
@@ -70,7 +74,7 @@ const FileCard = ({
 
   const handleClick = () => {
     if (!isFolder) {
-      fetchFileURL((file as FileStructure).key);
+      fetchFileURL((file as FileStructure).redirectKey);
       console.log("Fetching URL");
     }
   };
@@ -190,6 +194,7 @@ const FileCard = ({
               foldersInsideFolder={innerFolder.folders}
               toggleSelection={toggleSelection}
               selectedItems={selectedItems}
+              redirectKey={innerFolder.redirectKey}
             />
           ))}
 
@@ -200,6 +205,7 @@ const FileCard = ({
               isFolder={false}
               toggleSelection={toggleSelection}
               selectedItems={selectedItems}
+              redirectKey={innerFile.redirectKey}
             />
           ))}
         </div>
