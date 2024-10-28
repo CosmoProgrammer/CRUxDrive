@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import FileCard from "./FileCard";
+import FileCard from "./HomePageComponents/FileCard";
+import { useNavigate } from "react-router-dom";
 import { AsyncResource } from "async_hooks";
 
 interface FileStructure {
@@ -19,10 +20,8 @@ interface Folder {
 type Props = {
   fileStructures: FileStructure[];
   showButtons: boolean;
-  uploadObjectsToGroup?: boolean;
-  groupId?: string;
-  groupName?: string;
-  groupRelativeKey?: string;
+  groupId: string | undefined;
+  groupName: string | undefined;
 };
 
 const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
@@ -68,16 +67,14 @@ const parseFileStructure = (fileStructures: FileStructure[]): Folder[] => {
   return rootFolders;
 };
 
-const FileStructureDisplay = ({
+const GroupFileStructureDisplay = ({
   fileStructures,
   showButtons,
-  uploadObjectsToGroup = false,
-  groupId = "",
-  groupName = "",
-  groupRelativeKey = "",
+  groupId,
+  groupName,
 }: Props) => {
-  const token = localStorage.getItem("token");
   const folderHierarchy = parseFileStructure(fileStructures);
+  const navigate = useNavigate();
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showUpload, setShowUpload] = useState(false);
   const [File, setFile] = useState<any[]>([]);
@@ -88,6 +85,7 @@ const FileStructureDisplay = ({
   const [lockedFilePassword, setLockedFilePassword] = useState("");
   const [showShare, setShowShare] = useState(false);
   const [emailToShare, setEmailToShare] = useState("");
+  const token = localStorage.getItem("token");
 
   async function getS3SignedURL(key: string, type: string) {
     const response = await fetch(`${SERVERPATH}/getUploadURL`, {
@@ -114,38 +112,25 @@ const FileStructureDisplay = ({
     });
   }
 
-  const handleFileChange = (e: any) => {
-    console.log("File changed");
-    const file = e.target.files[0];
-    setFile(Array.from(e.target.files));
-  };
-
   async function handleFileSubmit() {
-    console.log("hi");
-    if (!File.length) {
-      return;
-    }
-    console.log("Handling submit");
-    for (const file of File) {
-      let toUploadTo = Array.from(selectedItems)[0];
-      if (toUploadTo[-1] !== "/") {
-        toUploadTo = toUploadTo + "/";
-      }
-      const fileKey = `${toUploadTo}${file.name}`;
-      const signedUrl = await getS3SignedURL(fileKey, file.type); // Get signed URL for each file
-      await pushToS3(signedUrl, file); // Upload each file to S3
-    }
+    const relativeKey = Array.from(selectedItems)[0];
+    navigate(
+      `/uploadToGroup/${groupId}/${encodeURIComponent(
+        relativeKey
+      )}/${groupName}`
+    );
   }
 
   async function handleDelete() {
     console.log("Deleting");
-    console.log(selectedItems);
-    const response = await fetch(`${SERVERPATH}/delete`, {
+    const objectsToDelete = Array.from(selectedItems);
+    const response = await fetch(`${SERVERPATH}/deleteObjectsInGroup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(Array.from(selectedItems)),
+      body: JSON.stringify({ objectsToDelete, groupId }),
     });
     const reply = await response.json();
     console.log(reply);
@@ -201,97 +186,26 @@ const FileStructureDisplay = ({
     }
   };
 
-  const enableShare = () => {
-    if (showShare === false) {
-      setShowShare(true);
-    } else {
-      setShowShare(false);
-    }
-    console.log(selectedItems);
-  };
-
-  async function handleShareEmailSubmit(e: any) {
+  async function handleCreateFolderSubmit(e: any) {
     e.preventDefault();
-    console.log("sharing");
-    console.log(selectedItems);
-    console.log(emailToShare);
-    const response = await fetch(`${SERVERPATH}/shareToEmail`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        items: Array.from(selectedItems),
-        email: emailToShare,
-      }),
-    });
-    const reply = await response.json();
-    console.log(reply);
-  }
-
-  async function handleCreateFolderSubmit() {
     let toUploadTo = Array.from(selectedItems)[0];
     if (toUploadTo[-1] !== "/") {
       toUploadTo = toUploadTo + "/";
     }
-    const response = await fetch(`${SERVERPATH}/createFolder`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        key: toUploadTo,
-        name: folderName,
-      }),
-    });
-    const url = await response.json();
-    console.log(url);
-  }
-
-  async function handleLock() {
-    console.log(Array.from(selectedItems)[0]);
-    if (showLockFileField === false) {
-      setShowLockFileField(true);
-    } else {
-      setShowLockFileField(false);
-    }
-  }
-
-  async function handleLockPasswordSubmit() {
-    console.log(lockedFilePassword);
-    console.log(Array.from(selectedItems)[0]);
-    const response = await fetch(`${SERVERPATH}/lockFileFolder`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        key: Array.from(selectedItems)[0],
-        password: lockedFilePassword,
-      }),
-    });
-    const result = await response.json();
-    console.log(result);
-  }
-
-  async function handleUploadObjectsToGroup() {
-    console.log("uploadingtogrp");
-    const toSendToGroup = Array.from(selectedItems);
-    const response = await fetch(`${SERVERPATH}/uploadKeysToGroup`, {
+    const response = await fetch(`${SERVERPATH}/createGroupFolder`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        toSendToGroup,
-        groupId,
-        groupName,
-        groupRelativeKey,
+        key: toUploadTo,
+        name: folderName,
+        groupId: groupId,
       }),
     });
-    const reply = await response.json();
-    console.log(reply);
+    const url = await response.json();
+    console.log(url);
   }
 
   return (
@@ -300,17 +214,9 @@ const FileStructureDisplay = ({
         <div style={styles.mainContainer}>
           <div style={styles.leftContainer}>
             {showUpload && (
-              <div style={styles.uploadContainer}>
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleFileChange}
-                  style={styles.fileInput}
-                />
-                <button onClick={handleFileSubmit} style={styles.submitButton}>
-                  Submit
-                </button>
-              </div>
+              <button onClick={handleFileSubmit} style={styles.lockButton}>
+                Upload Objects
+              </button>
             )}
             <br />
 
@@ -344,61 +250,7 @@ const FileStructureDisplay = ({
                   />
                 </label>
                 <button
-                  onClick={handleCreateFolderSubmit}
-                  style={styles.submitButton}
-                >
-                  Submit
-                </button>
-              </form>
-            )}
-            <br />
-
-            {showLock && (
-              <button onClick={handleLock} style={styles.lockButton}>
-                Lock File/Folder
-              </button>
-            )}
-            <br />
-
-            {showLockFileField && (
-              <form style={styles.form}>
-                <label style={styles.label}>
-                  Enter Password
-                  <input
-                    type="password"
-                    value={lockedFilePassword}
-                    onChange={(e) => setLockedFilePassword(e.target.value)}
-                    style={styles.input}
-                  />
-                </label>
-                <button
-                  onClick={handleLockPasswordSubmit}
-                  style={styles.submitButton}
-                >
-                  Submit
-                </button>
-              </form>
-            )}
-
-            {selectedItems.size > 0 && (
-              <button onClick={enableShare} style={styles.lockButton}>
-                Share File(s)/Folder(s)
-              </button>
-            )}
-
-            {showShare && (
-              <form style={styles.form}>
-                <label style={styles.label}>
-                  Enter Email Address
-                  <input
-                    type="email"
-                    value={emailToShare}
-                    onChange={(e) => setEmailToShare(e.target.value)}
-                    style={styles.input}
-                  />
-                </label>
-                <button
-                  onClick={handleShareEmailSubmit}
+                  onClick={(e) => handleCreateFolderSubmit(e)}
                   style={styles.submitButton}
                 >
                   Submit
@@ -451,14 +303,6 @@ const FileStructureDisplay = ({
             />
           ))}
         </div>
-      )}
-      {uploadObjectsToGroup && (
-        <button
-          onClick={handleUploadObjectsToGroup}
-          style={styles.submitButton}
-        >
-          Submit
-        </button>
       )}
     </>
   );
@@ -561,4 +405,4 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 };
 
-export default FileStructureDisplay;
+export default GroupFileStructureDisplay;

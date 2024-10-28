@@ -36,6 +36,13 @@ interface File {
   redirectKey: string | undefined;
 }
 
+interface GroupFile {
+  key: string | undefined;
+  relativeKey: string | undefined;
+  size: string | undefined;
+  lastModified: string | undefined | Date;
+}
+
 const s3Client = new S3Client({
   region: "eu-north-1",
   credentials: {
@@ -315,8 +322,8 @@ app.get(
         ["data"].map((element: any) => [element.key])
         .flat();
       //console.log(sharedFiles);
-      let fileStructure = await getSharedFilesInfo(sharedFiles);
-      //console.log(fileStructure);
+      const fileStructure = await getSharedFilesInfo(sharedFiles);
+      console.log(fileStructure);
       return res.status(200).json({ fileStructure });
     } catch (e) {
       console.error(e);
@@ -324,6 +331,207 @@ app.get(
     }
   }
 );
+
+app.post(
+  "/createNewGroup",
+  JWTMiddleware,
+  async (req: Request, res: Response) => {
+    const { user, groupName, isPublic } = req.body;
+    const id = Date.now().toString(16);
+    voidb(
+      `insert "[['${id}', '${groupName}', '${user.id}', ${isPublic}]]" into "groups" columns "*"`
+    );
+    voidb(
+      `create new table "Group_${id}" columns "[{'key':'string'}, {'relativeKey':'string'}, {'lastModified': 'string'}, {'size': 'string'} ]" values "[]";`
+    );
+    voidb(
+      `insert "[['', '/${groupName}/welcome/', '', '0']]" into "Group_${id}" columns "*"`
+    );
+    //console.log(user, groupName, isPublic, id);
+    return res.status(200).json({ message: "Group created" });
+  }
+);
+
+app.get(
+  "/getAllMyGroups",
+  JWTMiddleware,
+  async (req: Request, res: Response) => {
+    const { id, email } = req.body.user;
+    let data = voidb(
+      `select table "groups" columns "*" where "owner === '${id}'";`
+    )[0]["data"];
+    return res.status(200).json(data);
+  }
+);
+
+app.post(
+  "/getGroupFileStructure",
+  JWTMiddleware,
+  async (req: Request, res: Response) => {
+    const { user, groupId, groupName } = req.body;
+    //console.log(user, groupId, groupName);
+    const data = voidb(`select table "Group_${groupId}" columns "*";`)[0][
+      "data"
+    ];
+    const fileStructure = data.map((file: GroupFile) => ({
+      key: file.relativeKey,
+      size: file.size,
+      lastModified: file.lastModified,
+      redirectKey: file.key,
+    }));
+    console.log(fileStructure);
+    return res.status(200).json({ fileStructure });
+  }
+);
+
+app.post(
+  "/createGroupFolder",
+  JWTMiddleware,
+  async (req: Request, res: Response) => {
+    const { user, key, name, groupId } = req.body;
+    //console.log(key, name, groupId);
+    console.log(
+      voidb(
+        `insert "[['', '/${key}${name}/', '', '0']]" into "Group_${groupId}" columns "*"`
+      )
+    );
+    return res.status(200).json("created folder");
+  }
+);
+
+app.post(
+  "/uploadKeysToGroup",
+  JWTMiddleware,
+  async (req: Request, res: Response) => {
+    let results: GroupFile[] = [];
+    const { user, toSendToGroup, groupId, groupName, groupRelativeKey } =
+      req.body;
+
+    await Promise.all(
+      toSendToGroup.map(async (key: string) => {
+        console.log(key);
+        if (key.endsWith("/")) {
+          //console.log("FOLDER");
+          const sharedFolder = key.match(/[^/]+\/$/)![0];
+          const folderInfo = {
+            relativeKey: `/${groupRelativeKey}/` + sharedFolder,
+            size: "0",
+            lastModified: new Date().toISOString(),
+            key: key,
+          };
+          results.push(folderInfo);
+
+          const command = new ListObjectsV2Command({
+            Bucket: BUCKET,
+            Prefix: key,
+          });
+          const { Contents } = await s3Client.send(command);
+
+          Contents?.forEach((item) => {
+            if (!item.Key!.endsWith("/")) {
+              const fileInfo = {
+                relativeKey:
+                  `/${groupRelativeKey}/` +
+                  item.Key!.substring(item.Key!.lastIndexOf(sharedFolder)),
+                size: JSON.stringify(item.Size),
+                lastModified: item.LastModified,
+                key: item.Key,
+              };
+              //console.log(fileInfo);
+              results.push(fileInfo);
+            }
+          });
+        } else {
+          //console.log("FILE");
+          const command = new HeadObjectCommand({
+            Bucket: BUCKET,
+            Key: key,
+          });
+          const metadata = await s3Client.send(command);
+          const fileInfo = {
+            relativeKey:
+              `/${groupRelativeKey}/` +
+              key.split("/").filter(Boolean).slice(-1)[0],
+            size: JSON.stringify(metadata.ContentLength),
+            lastModified: metadata.LastModified,
+            key: key,
+          };
+          //console.log(fileInfo);
+          results.push(fileInfo);
+        }
+      })
+    );
+
+    console.log("RESULTS");
+    const flattenedResults = JSON.stringify(
+      results.map(({ key, relativeKey, lastModified, size }) => [
+        key,
+        relativeKey,
+        lastModified,
+        size,
+      ])
+    ).replace(/"/g, "'");
+    console.log(
+      voidb(`insert "${flattenedResults}" into "Group_${groupId}" columns "*";`)
+    );
+    return res.status(200).json("uploaded");
+  }
+);
+
+app.post(
+  "/deleteObjectsInGroup",
+  JWTMiddleware,
+  async (req: Request, res: Response) => {
+    const { user, objectsToDelete, groupId } = req.body;
+    console.log(objectsToDelete, groupId);
+    let data = voidb(`select table "Group_${groupId}" columns "*";`)[0]["data"];
+    console.log(data);
+    const filteredObjects = data.filter((obj: any) => {
+      const isFileToDelete = objectsToDelete.includes(obj.relativeKey);
+      const isInFolderToDelete = objectsToDelete.some(
+        (folderKey: string) =>
+          folderKey.endsWith("/") &&
+          (obj.relativeKey.startsWith(folderKey) ||
+            obj.relativeKey.startsWith("/" + folderKey))
+      );
+      return !isFileToDelete && !isInFolderToDelete;
+    });
+    //console.log(filteredObjects);
+    const flattenedResults = JSON.stringify(
+      filteredObjects.map(({ key, relativeKey, lastModified, size }) => [
+        key,
+        relativeKey,
+        lastModified,
+        size,
+      ])
+    ).replace(/"/g, "'");
+    console.log(voidb(`truncate "Group_${groupId}";`));
+    console.log(
+      voidb(`insert "${flattenedResults}" into "Group_${groupId}" columns "*";`)
+    );
+    return res.status(200).json("deleted");
+  }
+);
+
+/*app.get("/getAllGroupsYouArePartOf", JWTMiddleware, async (req: Request, res: Response) => {
+  const { id, email } = req.body.user;
+  //console.log(id);
+  //const id = "105166271717311784705";
+  console.log(`select table "${id}_Groups" columns "*";`);
+  try {
+    const groups = voidb(`select table "${id}_Groups" columns "*";`)[0]["data"];
+    //console.log(groups);
+    return res.status(200).json(groups);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: "File fetching failed" });
+  }
+});
+
+app.post("/addEmailToGroup", JWTMiddleware, async (req: Request, res: Response) => {
+  const { user, group, email } = req.body;
+  console.log(voidb(``))
+})*/
 
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
