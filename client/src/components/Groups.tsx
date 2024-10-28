@@ -83,37 +83,175 @@ const Groups = () => {
   };
 
   return (
-    <>
-      <h1>Groups</h1>
-      <input
-        type="button"
-        value="Create Group"
-        onClick={handleShowCreateGroup}
-      />
-      {showCreateGroup && (
-        <form>
-          Group Name:{" "}
-          <input
-            type="text"
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
-          />
-          isPublic:{" "}
-          <input
-            type="checkbox"
-            checked={isPublic}
-            onClick={handleShowPublicClick}
-          />
-          <input type="submit" onClick={(e) => handleSubmitGroup(e)} />
-        </form>
-      )}
-      {myGroups.map((group) => (
-        <li key={group.groupId}>
-          <GroupCard group={group} />
-        </li>
-      ))}
-    </>
+    <div style={styles.gridContainer}>
+      {/* Create Group Section */}
+      <div
+        style={{
+          ...styles.createGroupSection,
+          alignItems: showCreateGroup ? "flex-start" : "center",
+          justifyContent: showCreateGroup ? "flex-start" : "center",
+        }}
+      >
+        <input
+          type="button"
+          value="Create Group"
+          onClick={handleShowCreateGroup}
+          style={
+            showCreateGroup ? styles.createButtonTop : styles.createButtonCenter
+          }
+        />
+        {showCreateGroup && (
+          <form style={styles.createGroupForm}>
+            <label style={styles.label}>
+              Group Name:{"          "}
+              <input
+                type="text"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                style={styles.input}
+              />
+            </label>
+            <label style={styles.label}>
+              isPublic:
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onClick={handleShowPublicClick}
+                style={styles.checkbox}
+              />
+            </label>
+            <input
+              type="submit"
+              onClick={(e) => handleSubmitGroup(e)}
+              style={styles.submitButton}
+            />
+          </form>
+        )}
+      </div>
+
+      {/* Your Groups Section */}
+      <div style={styles.yourGroupsSection}>
+        <h2 style={styles.sectionTitle}>Your Groups</h2>
+        <div style={styles.groupCardGrid}>
+          {myGroups.map((group) => (
+            <div key={group.groupId} style={styles.groupItem}>
+              <GroupCard group={group} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Placeholder for Joined Groups Section */}
+      <div style={styles.joinedGroupsSection}>
+        <h2 style={styles.sectionTitle}>Groups You’ve Joined</h2>
+        {/* Placeholder content */}
+      </div>
+
+      {/* Placeholder for Public Groups Section */}
+      <div style={styles.publicGroupsSection}>
+        <h2 style={styles.sectionTitle}>Browse Public Groups</h2>
+        {/* Placeholder content */}
+      </div>
+    </div>
   );
+};
+
+const styles: { [key: string]: React.CSSProperties } = {
+  gridContainer: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gridTemplateRows: "1fr 1fr",
+    gap: "20px",
+    padding: "20px",
+    height: "100vh",
+  },
+  createGroupSection: {
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+    padding: "20px",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+    display: "flex",
+    flexDirection: "column",
+  },
+  createButtonCenter: {
+    padding: "20px 35px",
+    fontSize: "18px",
+    backgroundColor: "#4CAF50",
+    color: "#fff",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  createButtonTop: {
+    padding: "10px 15px",
+    backgroundColor: "#4CAF50",
+    color: "#fff",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    alignSelf: "flex-start",
+  },
+  createGroupForm: {
+    marginTop: "20px",
+    display: "flex",
+    flexDirection: "column",
+  },
+  label: {
+    fontSize: "15px",
+    marginBottom: "10px",
+  },
+  input: {
+    padding: "8px",
+    borderRadius: "4px",
+    border: "1px solid #ddd",
+    marginTop: "5px",
+    marginBottom: "10px",
+  },
+  checkbox: {
+    marginLeft: "10px",
+  },
+  submitButton: {
+    padding: "10px 15px",
+    fontSize: "15px",
+    backgroundColor: "#4285F4",
+    color: "#fff",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  },
+  yourGroupsSection: {
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+    padding: "20px",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+    overflowY: "auto",
+  },
+  sectionTitle: {
+    fontSize: "18px",
+    fontWeight: "bold",
+    marginBottom: "15px",
+    color: "#333",
+  },
+  groupCardGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "15px",
+  },
+  groupItem: {
+    marginBottom: "15px",
+  },
+  joinedGroupsSection: {
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+    padding: "20px",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+  },
+  publicGroupsSection: {
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+    padding: "20px",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+  },
 };
 
 export default Groups;
