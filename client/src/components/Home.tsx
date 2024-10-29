@@ -20,6 +20,13 @@ const Home = () => {
     images: boolean;
     pdfs: boolean;
     text: boolean;
+    spreadsheets: boolean;
+    presentations: boolean;
+    audio: boolean;
+    video: boolean;
+    compressed: boolean;
+    code: boolean;
+    executables: boolean;
   };
 
   const navigate = useNavigate();
@@ -35,12 +42,38 @@ const Home = () => {
     images: false,
     pdfs: false,
     text: false,
+    spreadsheets: false,
+    presentations: false,
+    audio: false,
+    video: false,
+    compressed: false,
+    code: false,
+    executables: false,
   });
 
   const fileExtensions: Record<string, string[]> = {
-    images: ["jpg", "jpeg", "png", "gif"],
+    images: ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "svg", "webp"],
     pdfs: ["pdf"],
-    text: ["txt", "doc", "docx"],
+    text: ["txt", "doc", "docx", "rtf", "odt"],
+    spreadsheets: ["xls", "xlsx", "csv", "ods"],
+    presentations: ["ppt", "pptx", "odp"],
+    audio: ["mp3", "wav", "aac", "flac", "ogg", "m4a"],
+    video: ["mp4", "avi", "mkv", "mov", "wmv", "flv"],
+    compressed: ["zip", "rar", "7z", "tar", "gz"],
+    code: [
+      "js",
+      "ts",
+      "html",
+      "css",
+      "py",
+      "java",
+      "cpp",
+      "c",
+      "rb",
+      "php",
+      "go",
+    ],
+    executables: ["exe", "msi", "bin", "dmg", "sh", "apk"],
   };
   const fuse = new Fuse(files, {
     keys: ["key"],
@@ -53,7 +86,12 @@ const Home = () => {
     ignoreLocation: true,
   });
 
-  const toggleShowBookmarked = (): void => {
+  const [minSize, setMinSize] = useState<number | "">("");
+  const [maxSize, setMaxSize] = useState<number | "">("");
+  const [startDate, setStartDate] = useState<string | null>(null);
+  const [endDate, setEndDate] = useState<string | null>(null);
+
+  const toggleShowBookmarked = () => {
     const newShowBookmarked = !showBookmarked;
     setShowBookmarked(newShowBookmarked);
     applyFilters(newShowBookmarked, fileTypeFilter);
@@ -63,7 +101,7 @@ const Home = () => {
     setShowDropdown(!showDropdown);
   };
 
-  const toggleFileTypeFilter = (type: keyof FileTypeFilter): void => {
+  const toggleFileTypeFilter = (type: keyof FileTypeFilter) => {
     const updatedFileTypeFilter: FileTypeFilter = {
       ...fileTypeFilter,
       [type]: !fileTypeFilter[type],
@@ -75,7 +113,7 @@ const Home = () => {
   const applyFilters = (
     showBookmarked: boolean,
     fileTypeFilter: FileTypeFilter
-  ): void => {
+  ) => {
     const typesToShow = Object.keys(fileTypeFilter).filter(
       (type) => fileTypeFilter[type as keyof FileTypeFilter]
     ) as (keyof FileTypeFilter)[];
@@ -89,19 +127,33 @@ const Home = () => {
             bookmarkKey.endsWith("/") && file.key.startsWith(bookmarkKey)
         );
 
+      const matchesSize =
+        (minSize === "" || parseInt(file.size, 10) >= minSize) &&
+        (maxSize === "" || parseInt(file.size, 10) <= maxSize);
+
+      const lastModified = new Date(file.lastModified);
+      const matchesDate =
+        (!startDate || lastModified >= new Date(startDate)) &&
+        (!endDate || lastModified <= new Date(endDate));
+
       const matchesFileType =
         typesToShow.length === 0 ||
         typesToShow.some((type) =>
           fileExtensions[type].includes(file.key.split(".").pop() || "")
         );
 
-      return (!showBookmarked || isBookmarked) && matchesFileType;
+      return (
+        (!showBookmarked || isBookmarked) &&
+        matchesFileType &&
+        matchesSize &&
+        matchesDate
+      );
     });
 
     setFilteredFiles(filtered);
   };
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>): void => {
+  const handleSearch = (e: any) => {
     const term = e.target.value;
     setSearchTerm(term);
     if (term.trim()) {
@@ -110,6 +162,22 @@ const Home = () => {
     } else {
       applyFilters(showBookmarked, fileTypeFilter);
     }
+  };
+
+  const handleMinSizeChange = (e: any) => {
+    setMinSize(e.target.value === "" ? "" : parseInt(e.target.value, 10));
+  };
+
+  const handleMaxSizeChange = (e: any) => {
+    setMaxSize(e.target.value === "" ? "" : parseInt(e.target.value, 10));
+  };
+
+  const handleStartDateChange = (e: any) => {
+    setStartDate(e.target.value || null);
+  };
+
+  const handleEndDateChange = (e: any) => {
+    setEndDate(e.target.value || null);
   };
 
   useEffect(() => {
@@ -124,7 +192,16 @@ const Home = () => {
 
   useEffect(() => {
     applyFilters(showBookmarked, fileTypeFilter);
-  }, [files, bookmarks]);
+  }, [
+    files,
+    bookmarks,
+    minSize,
+    maxSize,
+    startDate,
+    endDate,
+    showBookmarked,
+    fileTypeFilter,
+  ]);
 
   const fetchFileStructure = async (token: string) => {
     try {
@@ -205,38 +282,60 @@ const Home = () => {
                       />
                       Show Bookmarked
                     </label>
+                    {Object.keys(fileTypeFilter).map((type) => (
+                      <div key={type} style={styles.filterOption}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={
+                              fileTypeFilter[type as keyof FileTypeFilter]
+                            }
+                            onChange={() =>
+                              toggleFileTypeFilter(type as keyof FileTypeFilter)
+                            }
+                            style={styles.checkbox}
+                          />
+                          {type.charAt(0).toUpperCase() + type.slice(1)}
+                        </label>
+                      </div>
+                    ))}
                     <div style={styles.filterOption}>
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={fileTypeFilter.images}
-                          onChange={() => toggleFileTypeFilter("images")}
-                          style={styles.checkbox}
-                        />
-                        Images
-                      </label>
+                      <label>Min Size (bytes):</label>
+                      <input
+                        type="number"
+                        value={minSize || ""}
+                        onChange={handleMinSizeChange}
+                        style={styles.sizeInput}
+                      />
                     </div>
                     <div style={styles.filterOption}>
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={fileTypeFilter.pdfs}
-                          onChange={() => toggleFileTypeFilter("pdfs")}
-                          style={styles.checkbox}
-                        />
-                        PDFs
-                      </label>
+                      <label>Max Size (bytes):</label>
+                      <input
+                        type="number"
+                        value={maxSize || ""}
+                        onChange={handleMaxSizeChange}
+                        style={styles.sizeInput}
+                      />
+                    </div>
+
+                    {/* Date Filter */}
+                    <div style={styles.filterOption}>
+                      <label>Start Date:</label>
+                      <input
+                        type="date"
+                        value={startDate || ""}
+                        onChange={handleStartDateChange}
+                        style={styles.dateInput}
+                      />
                     </div>
                     <div style={styles.filterOption}>
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={fileTypeFilter.text}
-                          onChange={() => toggleFileTypeFilter("text")}
-                          style={styles.checkbox}
-                        />
-                        Text Files
-                      </label>
+                      <label>End Date:</label>
+                      <input
+                        type="date"
+                        value={endDate || ""}
+                        onChange={handleEndDateChange}
+                        style={styles.dateInput}
+                      />
                     </div>
                   </div>
                 )}
@@ -329,6 +428,16 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   checkbox: {
     marginRight: "8px",
+  },
+  sizeInput: {
+    width: "100px",
+    marginRight: "10px",
+    padding: "5px",
+  },
+  dateInput: {
+    width: "140px",
+    marginRight: "10px",
+    padding: "5px",
   },
 };
 

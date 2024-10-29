@@ -12,6 +12,13 @@ import {
   MdAudiotrack,
   MdVideocam,
 } from "react-icons/md";
+import {
+  FaFileExcel,
+  FaFilePowerpoint,
+  FaFileArchive,
+  FaFileCode,
+} from "react-icons/fa";
+import { VscJson } from "react-icons/vsc";
 
 interface FileStructure {
   key: string;
@@ -97,6 +104,9 @@ const FileCard = ({
       case "png":
       case "gif":
       case "bmp":
+      case "tiff":
+      case "svg":
+      case "webp":
         return <MdImage color="#4caf50" style={{ marginRight: "10px" }} />;
       case "pdf":
         return (
@@ -105,18 +115,65 @@ const FileCard = ({
       case "txt":
       case "doc":
       case "docx":
+      case "rtf":
+      case "odt":
         return (
           <MdTextSnippet color="#2196f3" style={{ marginRight: "10px" }} />
+        );
+      case "xls":
+      case "xlsx":
+      case "csv":
+      case "ods":
+        return <FaFileExcel color="#0b8043" style={{ marginRight: "10px" }} />;
+      case "ppt":
+      case "pptx":
+      case "odp":
+        return (
+          <FaFilePowerpoint color="#d24726" style={{ marginRight: "10px" }} />
         );
       case "mp3":
       case "wav":
       case "aac":
+      case "flac":
+      case "ogg":
+      case "m4a":
         return <MdAudiotrack color="#9c27b0" style={{ marginRight: "10px" }} />;
       case "mp4":
       case "mov":
       case "avi":
       case "mkv":
+      case "wmv":
+      case "flv":
         return <MdVideocam color="#ff9800" style={{ marginRight: "10px" }} />;
+      case "zip":
+      case "rar":
+      case "7z":
+      case "tar":
+      case "gz":
+        return (
+          <FaFileArchive color="#8d6e63" style={{ marginRight: "10px" }} />
+        );
+      case "js":
+      case "ts":
+      case "html":
+      case "css":
+      case "py":
+      case "java":
+      case "cpp":
+      case "c":
+      case "rb":
+      case "php":
+      case "go":
+        return <FaFileCode color="#ff5722" style={{ marginRight: "10px" }} />;
+      case "exe":
+      case "msi":
+      case "bin":
+      case "dmg":
+      case "sh":
+      case "apk":
+        return <FaFileAlt color="#607d8b" style={{ marginRight: "10px" }} />;
+      case "json":
+        return <VscJson color="#ffa000" style={{ marginRight: "10px" }} />;
       default:
         return <FaFileAlt color="#4285F4" style={{ marginRight: "10px" }} />;
     }
