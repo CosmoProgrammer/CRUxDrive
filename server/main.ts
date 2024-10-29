@@ -625,6 +625,45 @@ app.post(
   }
 );
 
+app.post("/bookmarks", JWTMiddleware, async (req: Request, res: Response) => {
+  const { user, selectedObjects } = req.body;
+  const id = user.id;
+  const bookmarks = voidb(`select table "${id}_Bookmarks" columns "*";`)[0][
+    "data"
+  ];
+  const bookmarkKeys = new Set(bookmarks.map((bookmark: any) => bookmark.key));
+  const updatedBookmarks = bookmarks.filter(
+    (bookmark: any) => !selectedObjects.includes(bookmark.key)
+  );
+  selectedObjects.forEach((key: string) => {
+    if (!bookmarkKeys.has(key)) {
+      updatedBookmarks.push({ key });
+    }
+  });
+  console.log(updatedBookmarks);
+  const flattenedBookmarks = JSON.stringify(
+    updatedBookmarks.map(({ key }) => [key])
+  ).replace(/"/g, "'");
+  console.log(voidb(`truncate "${id}_Bookmarks";`));
+  console.log(
+    voidb(`insert "${flattenedBookmarks}" into "${id}_Bookmarks" columns "*";`)
+  );
+  return res.status(200).json("Updated bookmarks");
+});
+
+app.post(
+  "/getBookmarks",
+  JWTMiddleware,
+  async (req: Request, res: Response) => {
+    const { user } = req.body;
+    const id = user.id;
+    const bookmarks = voidb(`select table "${id}_Bookmarks" columns "*";`)[0][
+      "data"
+    ];
+    return res.status(200).json(bookmarks);
+  }
+);
+
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
 });

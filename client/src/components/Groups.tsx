@@ -192,7 +192,7 @@ const Groups = () => {
         </div>
       </div>
 
-      {/* Placeholder for Joined Groups Section */}
+      {/* Joined Groups Section */}
       <div style={styles.joinedGroupsSection}>
         <h2 style={styles.sectionTitle}>Groups You’ve Joined</h2>
         {myGroupsIAmIn.map((group) => (
@@ -206,7 +206,7 @@ const Groups = () => {
         ))}
       </div>
 
-      {/* Placeholder for Public Groups Section */}
+      {/* Public Groups Section */}
       <div style={styles.publicGroupsSection}>
         <h2 style={styles.sectionTitle}>Browse Public Groups</h2>
         {publicGroups.map((group) => (

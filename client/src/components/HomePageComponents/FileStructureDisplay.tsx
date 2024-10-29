@@ -274,6 +274,18 @@ const FileStructureDisplay = ({
     console.log(result);
   }
 
+  async function handleBookmark() {
+    const response = await fetch(`${SERVERPATH}/bookmarks`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ selectedObjects: Array.from(selectedItems) }),
+    });
+    const reply = await response.json();
+  }
+
   async function handleUploadObjectsToGroup() {
     console.log("uploadingtogrp");
     const toSendToGroup = Array.from(selectedItems);
@@ -406,6 +418,11 @@ const FileStructureDisplay = ({
               </form>
             )}
             <br />
+            {selectedItems.size > 0 && (
+              <button onClick={handleBookmark} style={styles.lockButton}>
+                Bookmark
+              </button>
+            )}
           </div>
           <br />
           <div style={styles.rightContainer}>
