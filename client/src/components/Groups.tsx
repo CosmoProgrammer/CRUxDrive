@@ -19,13 +19,19 @@ const Groups = () => {
   const [groupName, setGroupName] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingTwo, setLoadingTwo] = useState(false);
+  const [loadingThree, setLoadingThree] = useState(false);
   const [myGroups, setMyGroups] = useState<Group[]>([]);
+  const [myGroupsIAmIn, setMyGroupsIAmIn] = useState<Group[]>([]);
+  const [publicGroups, setPublicGroups] = useState<Group[]>([]);
 
   useEffect(() => {
     if (!token) {
       navigate("/login");
     } else {
       fetchMyGroups(token);
+      fetchGroupIAmIn(token);
+      fetchPublicGroups(token);
     }
   }, [navigate]);
 
@@ -48,6 +54,51 @@ const Groups = () => {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchGroupIAmIn = async (token: any) => {
+    try {
+      const response = await fetch(`${SERVERPATH}/getAllGroupsYouArePartOf`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        let data = await response.json();
+        setMyGroupsIAmIn(data);
+      } else {
+        console.error("Failed to get groups");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingTwo(false);
+    }
+  };
+
+  const fetchPublicGroups = async (token: any) => {
+    try {
+      const response = await fetch(`${SERVERPATH}/getAllPublicGroups`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        let data = await response.json();
+        setPublicGroups(data);
+        console.log(data);
+      } else {
+        console.error("Failed to get groups");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingThree(false);
     }
   };
 
@@ -144,13 +195,25 @@ const Groups = () => {
       {/* Placeholder for Joined Groups Section */}
       <div style={styles.joinedGroupsSection}>
         <h2 style={styles.sectionTitle}>Groups You’ve Joined</h2>
-        {/* Placeholder content */}
+        {myGroupsIAmIn.map((group) => (
+          <div key={group.groupId} style={styles.groupItem}>
+            <GroupCard group={group} showButtons={false} />
+          </div>
+        ))}
       </div>
 
       {/* Placeholder for Public Groups Section */}
       <div style={styles.publicGroupsSection}>
         <h2 style={styles.sectionTitle}>Browse Public Groups</h2>
-        {/* Placeholder content */}
+        {publicGroups.map((group) => (
+          <div key={group.groupId} style={styles.groupItem}>
+            <GroupCard
+              group={group}
+              showButtons={false}
+              showJoinButton={true}
+            />
+          </div>
+        ))}
       </div>
     </div>
   );

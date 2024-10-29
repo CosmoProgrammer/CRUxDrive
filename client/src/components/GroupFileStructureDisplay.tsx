@@ -22,6 +22,7 @@ type Props = {
   showButtons: boolean;
   groupId: string | undefined;
   groupName: string | undefined;
+  showShareButton?: boolean;
 };
 
 const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
@@ -72,6 +73,7 @@ const GroupFileStructureDisplay = ({
   showButtons,
   groupId,
   groupName,
+  showShareButton = false,
 }: Props) => {
   const folderHierarchy = parseFileStructure(fileStructures);
   const navigate = useNavigate();
@@ -127,8 +129,8 @@ const GroupFileStructureDisplay = ({
     const response = await fetch(`${SERVERPATH}/deleteObjectsInGroup`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ objectsToDelete, groupId }),
     });
@@ -184,6 +186,30 @@ const GroupFileStructureDisplay = ({
     } else {
       setShowCreateFolder(false);
     }
+  };
+
+  async function handleShareEmailSubmit(e: any) {
+    console.log("Sharing");
+    e.preventDefault();
+    const response = await fetch(`${SERVERPATH}/addEmailToGroup`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ groupId: groupId, email: emailToShare }),
+    });
+    let data = await response.json();
+    console.log(data);
+  }
+
+  const enableShare = () => {
+    if (showShare === false) {
+      setShowShare(true);
+    } else {
+      setShowShare(false);
+    }
+    console.log(selectedItems);
   };
 
   async function handleCreateFolderSubmit(e: any) {
@@ -258,6 +284,31 @@ const GroupFileStructureDisplay = ({
               </form>
             )}
             <br />
+            {showShareButton && (
+              <button onClick={enableShare} style={styles.lockButton}>
+                Share File(s)/Folder(s)
+              </button>
+            )}
+
+            {showShare && (
+              <form style={styles.form}>
+                <label style={styles.label}>
+                  Enter Email Address
+                  <input
+                    type="email"
+                    value={emailToShare}
+                    onChange={(e) => setEmailToShare(e.target.value)}
+                    style={styles.input}
+                  />
+                </label>
+                <button
+                  onClick={(e) => handleShareEmailSubmit(e)}
+                  style={styles.submitButton}
+                >
+                  Submit
+                </button>
+              </form>
+            )}
           </div>
           <br />
           <div style={styles.rightContainer}>

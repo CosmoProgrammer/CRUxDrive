@@ -20,7 +20,10 @@ function App() {
         <Route path="/locked" element={<LockedFileAccess />} />
         <Route path="/shared" element={<SharedWithMe />} />
         <Route path="/groups" element={<Groups />} />
-        <Route path="/group/:groupId/:name" element={<GroupPage />} />
+        <Route
+          path="/group/:showShare/:showButtons/:groupId/:name"
+          element={<GroupPage />}
+        />
         <Route
           path="/uploadToGroup/:groupId/:relativeKey/:groupName"
           element={<UploadObjectToGroup />}

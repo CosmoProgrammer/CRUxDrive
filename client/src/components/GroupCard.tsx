@@ -10,13 +10,42 @@ interface Group {
 
 interface Props {
   group: Group;
+  showButtons?: boolean;
+  showJoinButton?: boolean;
 }
 
-const GroupCard = ({ group }: Props) => {
+const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
+
+const GroupCard = ({
+  group,
+  showButtons = true,
+  showJoinButton = false,
+}: Props) => {
   const navigate = useNavigate();
+  const token = localStorage.getItem("token");
 
   const handleCardClick = () => {
-    navigate(`/group/${group.groupId}/${encodeURIComponent(group.name)}`);
+    navigate(
+      `/group/${group.isPublic}/${showButtons}/${
+        group.groupId
+      }/${encodeURIComponent(group.name)}`
+    );
+  };
+
+  const handleJoinGroup = async () => {
+    console.log(group.groupId);
+    const groupId = group.groupId;
+    console.log(groupId, typeof groupId);
+    const response = await fetch(`${SERVERPATH}/joinGroup`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ groupId: groupId }),
+    });
+    let data = await response.json();
+    console.log(data);
   };
 
   return (
@@ -26,6 +55,18 @@ const GroupCard = ({ group }: Props) => {
       <p style={styles.access}>
         Access: {group.isPublic ? "Public" : "Private"}
       </p>
+
+      {showJoinButton && (
+        <button
+          style={styles.joinButton}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleJoinGroup();
+          }}
+        >
+          Join Group
+        </button>
+      )}
     </div>
   );
 };
@@ -43,6 +84,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: "column",
     alignItems: "center",
     textAlign: "center",
+    position: "relative",
   },
   title: {
     fontSize: "20px",
@@ -59,6 +101,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "14px",
     color: "#007BFF",
     fontWeight: "500",
+    marginBottom: "15px",
+  },
+  joinButton: {
+    padding: "10px 20px",
+    fontSize: "16px",
+    backgroundColor: "#28a745",
+    color: "#fff",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    transition: "background-color 0.2s ease",
+    marginTop: "10px",
   },
 };
 

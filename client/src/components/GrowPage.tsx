@@ -5,7 +5,7 @@ import GroupFileStructureDisplay from "./GroupFileStructureDisplay";
 const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
 
 const GroupPage = () => {
-  const { groupId, name } = useParams();
+  const { showShare, showButtons, groupId, name } = useParams();
 
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
@@ -68,9 +68,10 @@ const GroupPage = () => {
         <>
           <GroupFileStructureDisplay
             fileStructures={files}
-            showButtons={true}
+            showButtons={JSON.parse(showButtons!)}
             groupId={groupId}
             groupName={decodeURIComponent(name!)}
+            showShareButton={!JSON.parse(showShare!)}
           />
         </>
       )}

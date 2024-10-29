@@ -16,6 +16,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import JWTMiddleware from "./middleware/JWT.ts";
 import bcrypt from "bcrypt";
+//import { group } from "console";
 
 const app: Express = express();
 const port = Deno.env.get("PORT") || 3000;
@@ -105,7 +106,7 @@ app.post("/login", async (req: Request, res: Response) => {
         `create new table "${payload.sub}_FilesFolders" with columns "[{'key':'string'}]" and values "[]"`
       );
       voidb(
-        `create new table "${payload.sub}_Groups" with columns "[{'groupID':'string'}]" and values "[]"`
+        `create new table "${payload.sub}_Groups" with columns "[{'groupId':'string', 'name':'string', 'owner':'string', 'isPublic':'boolean'}]" and values "[]"`
       );
       voidb(
         `create new table "${payload.sub}_Bookmarks" with columns "[{'key':'string'}]" and values "[]"`
@@ -513,25 +514,95 @@ app.post(
   }
 );
 
-/*app.get("/getAllGroupsYouArePartOf", JWTMiddleware, async (req: Request, res: Response) => {
-  const { id, email } = req.body.user;
-  //console.log(id);
-  //const id = "105166271717311784705";
-  console.log(`select table "${id}_Groups" columns "*";`);
-  try {
-    const groups = voidb(`select table "${id}_Groups" columns "*";`)[0]["data"];
-    //console.log(groups);
-    return res.status(200).json(groups);
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ message: "File fetching failed" });
+app.get(
+  "/getAllGroupsYouArePartOf",
+  JWTMiddleware,
+  async (req: Request, res: Response) => {
+    const { id, email } = req.body.user;
+    //console.log(id);
+    //const id = "105166271717311784705";
+    console.log(`select table "${id}_Groups" columns "*";`);
+    try {
+      const groups = voidb(`select table "${id}_Groups" columns "*";`)[0][
+        "data"
+      ];
+      //console.log(groups);
+      return res.status(200).json(groups);
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ message: "File fetching failed" });
+    }
   }
+);
+
+app.get(
+  "/getAllPublicGroups",
+  JWTMiddleware,
+  async (req: Request, res: Response) => {
+    const { id } = req.body.user;
+    const allPublicGroups = voidb(
+      `select table "groups" columns "*" where "isPublic === true";`
+    )[0]["data"];
+    const joinedGroups = voidb(`select table "${id}_Groups" columns "*";`)[0][
+      "data"
+    ];
+    const filteredGroups = allPublicGroups.filter((group: any) => {
+      return !joinedGroups.some((item: any) => item.groupId === group.groupId);
+    });
+    return res.status(200).json(filteredGroups);
+  }
+);
+
+app.post("/joinGroup", JWTMiddleware, async (req: Request, res: Response) => {
+  const { user, groupId } = req.body;
+  const id = user.id;
+  const group = voidb(
+    `select table "groups" columns "*" where "groupId === '${groupId}'";`
+  )[0]["data"];
+  const flattenedGroup = JSON.stringify(
+    group.map(({ groupId, name, owner, isPublic }) => [
+      groupId,
+      name,
+      owner,
+      isPublic,
+    ])
+  ).replace(/"/g, "'");
+  console.log(
+    voidb(`insert "${flattenedGroup}" into "${id}_Groups" columns "*";`)
+  );
+  return res.status(200).json("added group");
 });
 
-app.post("/addEmailToGroup", JWTMiddleware, async (req: Request, res: Response) => {
-  const { user, group, email } = req.body;
-  console.log(voidb(``))
-})*/
+app.post(
+  "/addEmailToGroup",
+  JWTMiddleware,
+  async (req: Request, res: Response) => {
+    const { user, groupId, email } = req.body;
+    const ids = voidb(
+      `select table "users" columns "['email', 'userId']" where "email === '${email}'"`
+    )[0]["data"];
+    console.log(ids);
+    if (ids.length === 0) {
+      return res.status(404).json("Email Not Found");
+    }
+    const id = ids[0]["userId"];
+    const group = voidb(
+      `select table "groups" columns "*" where "groupId === '${groupId}'";`
+    )[0]["data"];
+    const flattenedGroup = JSON.stringify(
+      group.map(({ groupId, name, owner, isPublic }) => [
+        groupId,
+        name,
+        owner,
+        isPublic,
+      ])
+    ).replace(/"/g, "'");
+    console.log(
+      voidb(`insert "${flattenedGroup}" into "${id}_Groups" columns "*";`)
+    );
+    return res.status(200).json("added group");
+  }
+);
 
 app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
