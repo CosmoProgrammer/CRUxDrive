@@ -1,57 +1,99 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FaBars } from "react-icons/fa";
+import { jwtDecode } from "jwt-decode";
+
+interface TokenPayload {
+  sub?: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+}
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const enableMenu = () => {
-    if (isOpen === false) {
-      setIsOpen(true);
-    } else {
-      setIsOpen(false);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const decodedToken: TokenPayload = jwtDecode(token);
+        setProfilePicture(decodedToken.picture || null);
+      } catch (error) {
+        console.error("Invalid token", error);
+      }
     }
+  }, []);
+
+  let closeTimeout: ReturnType<typeof setTimeout>;
+
+  const handleMouseEnter = () => {
+    clearTimeout(closeTimeout);
+    setIsOpen(true);
   };
-  //console.log(`location is ${location.pathname}`);
+
+  const handleMouseLeave = () => {
+    closeTimeout = setTimeout(() => setIsOpen(false), 200);
+  };
 
   return (
     <div style={styles.container}>
-      {/* Menu Icon */}
-      <FaBars onClick={enableMenu} style={styles.menuIcon} />
+      <div
+        style={styles.menuContainer}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <FaBars style={styles.menuIcon} />
+        {isOpen && (
+          <div
+            style={styles.dropdown}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            <Link
+              to="/home"
+              style={{
+                ...styles.menuItem,
+                ...(location.pathname === "/home" ? styles.activeMenuItem : {}),
+              }}
+            >
+              Home
+            </Link>
+            <Link
+              to="/shared"
+              style={{
+                ...styles.menuItem,
+                ...(location.pathname === "/shared"
+                  ? styles.activeMenuItem
+                  : {}),
+              }}
+            >
+              Shared With Me
+            </Link>
+            <Link
+              to="/groups"
+              style={{
+                ...styles.menuItem,
+                ...(location.pathname === "/groups"
+                  ? styles.activeMenuItem
+                  : {}),
+              }}
+            >
+              Groups
+            </Link>
+          </div>
+        )}
+      </div>
 
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div style={styles.dropdown}>
-          <Link
-            to="/"
-            style={{
-              ...styles.menuItem,
-              ...(location.pathname === "/home" ? styles.activeMenuItem : {}),
-            }}
-          >
-            Home
-          </Link>
-          <Link
-            to="/shared"
-            style={{
-              ...styles.menuItem,
-              ...(location.pathname === "/shared" ? styles.activeMenuItem : {}),
-            }}
-          >
-            Shared With Me
-          </Link>
-          <Link
-            to="/groups"
-            style={{
-              ...styles.menuItem,
-              ...(location.pathname === "/groups" ? styles.activeMenuItem : {}),
-            }}
-          >
-            Groups
-          </Link>
-        </div>
+      {profilePicture && (
+        <img
+          src={profilePicture}
+          alt="User Profile"
+          style={styles.profilePicture}
+        />
       )}
     </div>
   );
@@ -63,6 +105,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: "flex",
     alignItems: "center",
     padding: "10px",
+    justifyContent: "space-between",
+  },
+  menuContainer: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
   },
   menuIcon: {
     fontSize: "24px",
@@ -72,7 +120,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   dropdown: {
     position: "absolute",
     top: "40px",
-    left: "10px",
+    left: 0,
     width: "150px",
     backgroundColor: "#fff",
     boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
@@ -93,6 +141,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   activeMenuItem: {
     backgroundColor: "#1f0f0",
     fontWeight: "bold",
+  },
+  profilePicture: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "50%",
+    cursor: "pointer",
   },
 };
 

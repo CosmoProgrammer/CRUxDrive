@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Fuse from "fuse.js";
 import FileStructureDisplay from "./HomePageComponents/FileStructureDisplay";
-import Sidebar from "./Sidebar";
 
 const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
 
@@ -248,7 +247,6 @@ const Home = () => {
 
   return (
     <>
-      <Sidebar />
       <h1>Your Files</h1>
       {loading ? (
         <p>Loading files...</p>
