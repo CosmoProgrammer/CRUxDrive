@@ -12,6 +12,7 @@ interface Props {
   group: Group;
   showButtons?: boolean;
   showJoinButton?: boolean;
+  showLeaveButton?: boolean;
 }
 
 const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
@@ -20,6 +21,7 @@ const GroupCard = ({
   group,
   showButtons = true,
   showJoinButton = false,
+  showLeaveButton = false,
 }: Props) => {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
@@ -48,6 +50,22 @@ const GroupCard = ({
     console.log(data);
   };
 
+  const handleLeaveGroup = async () => {
+    console.log(group.groupId);
+    const groupId = group.groupId;
+    console.log(groupId, typeof groupId);
+    const response = await fetch(`${SERVERPATH}/leaveGroup`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ idToBeRemoved: groupId }),
+    });
+    let data = await response.json();
+    console.log(data);
+  };
+
   return (
     <div style={styles.card} onClick={handleCardClick}>
       <h2 style={styles.title}>{group.name}</h2>
@@ -65,6 +83,18 @@ const GroupCard = ({
           }}
         >
           Join Group
+        </button>
+      )}
+
+      {showLeaveButton && (
+        <button
+          style={styles.leaveButton}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleLeaveGroup();
+          }}
+        >
+          Leave Group
         </button>
       )}
     </div>
@@ -107,6 +137,17 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: "10px 20px",
     fontSize: "16px",
     backgroundColor: "#28a745",
+    color: "#fff",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    transition: "background-color 0.2s ease",
+    marginTop: "10px",
+  },
+  leaveButton: {
+    padding: "10px 20px",
+    fontSize: "16px",
+    backgroundColor: "#f44336",
     color: "#fff",
     border: "none",
     borderRadius: "8px",

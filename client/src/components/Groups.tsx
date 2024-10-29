@@ -197,7 +197,11 @@ const Groups = () => {
         <h2 style={styles.sectionTitle}>Groups You’ve Joined</h2>
         {myGroupsIAmIn.map((group) => (
           <div key={group.groupId} style={styles.groupItem}>
-            <GroupCard group={group} showButtons={false} />
+            <GroupCard
+              group={group}
+              showButtons={false}
+              showLeaveButton={true}
+            />
           </div>
         ))}
       </div>

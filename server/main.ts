@@ -106,7 +106,7 @@ app.post("/login", async (req: Request, res: Response) => {
         `create new table "${payload.sub}_FilesFolders" with columns "[{'key':'string'}]" and values "[]"`
       );
       voidb(
-        `create new table "${payload.sub}_Groups" with columns "[{'groupId':'string', 'name':'string', 'owner':'string', 'isPublic':'boolean'}]" and values "[]"`
+        `create new table "${payload.sub}_Groups" with columns "[{'groupId':'string'}, {'name':'string'}, {'owner':'string'}, {'isPublic':'boolean'}]" and values "[]"`
       );
       voidb(
         `create new table "${payload.sub}_Bookmarks" with columns "[{'key':'string'}]" and values "[]"`
@@ -567,6 +567,27 @@ app.post("/joinGroup", JWTMiddleware, async (req: Request, res: Response) => {
       isPublic,
     ])
   ).replace(/"/g, "'");
+  console.log(
+    voidb(`insert "${flattenedGroup}" into "${id}_Groups" columns "*";`)
+  );
+  return res.status(200).json("added group");
+});
+
+app.post("/leaveGroup", JWTMiddleware, async (req: Request, res: Response) => {
+  const { user, idToBeRemoved } = req.body;
+  const id = user.id;
+  const group = voidb(`select table "${id}_Groups" columns "*";`)[0]["data"];
+  const flattenedGroup = JSON.stringify(
+    group
+      .filter((group: any) => group.groupId !== idToBeRemoved)
+      .map(({ groupId, name, owner, isPublic }) => [
+        groupId,
+        name,
+        owner,
+        isPublic,
+      ])
+  ).replace(/"/g, "'");
+  console.log(voidb(`truncate "${id}_Groups";`));
   console.log(
     voidb(`insert "${flattenedGroup}" into "${id}_Groups" columns "*";`)
   );
