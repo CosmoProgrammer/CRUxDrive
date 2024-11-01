@@ -23,6 +23,8 @@ type Props = {
   groupId?: string;
   groupName?: string;
   groupRelativeKey?: string;
+  refetch?: () => void;
+  bookmarkRefetch?: () => void;
 };
 
 const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
@@ -75,6 +77,12 @@ const FileStructureDisplay = ({
   groupId = "",
   groupName = "",
   groupRelativeKey = "",
+  refetch = () => {
+    console.log("Refetfch placeholder");
+  },
+  bookmarkRefetch = () => {
+    console.log("Bookmark refetch placeholder");
+  },
 }: Props) => {
   const token = localStorage.getItem("token");
   const folderHierarchy = parseFileStructure(fileStructures);
@@ -135,6 +143,7 @@ const FileStructureDisplay = ({
       const signedUrl = await getS3SignedURL(fileKey, file.type); // Get signed URL for each file
       await pushToS3(signedUrl, file); // Upload each file to S3
     }
+    refetch();
   }
 
   async function handleDelete() {
@@ -149,6 +158,7 @@ const FileStructureDisplay = ({
     });
     const reply = await response.json();
     console.log(reply);
+    refetch();
   }
 
   const toggleSelection = (key: string, folderOrNot: boolean) => {
@@ -227,9 +237,11 @@ const FileStructureDisplay = ({
     });
     const reply = await response.json();
     console.log(reply);
+    setShowLockFileField(false);
   }
 
-  async function handleCreateFolderSubmit() {
+  async function handleCreateFolderSubmit(e: any) {
+    e.preventDefault();
     let toUploadTo = Array.from(selectedItems)[0];
     if (toUploadTo[-1] !== "/") {
       toUploadTo = toUploadTo + "/";
@@ -246,6 +258,7 @@ const FileStructureDisplay = ({
     });
     const url = await response.json();
     console.log(url);
+    refetch!();
   }
 
   async function handleLock() {
@@ -272,6 +285,7 @@ const FileStructureDisplay = ({
     });
     const result = await response.json();
     console.log(result);
+    setShowLockFileField(false);
   }
 
   async function handleBookmark() {
@@ -284,6 +298,7 @@ const FileStructureDisplay = ({
       body: JSON.stringify({ selectedObjects: Array.from(selectedItems) }),
     });
     const reply = await response.json();
+    bookmarkRefetch();
   }
 
   async function handleUploadObjectsToGroup() {
@@ -356,7 +371,7 @@ const FileStructureDisplay = ({
                   />
                 </label>
                 <button
-                  onClick={handleCreateFolderSubmit}
+                  onClick={(e) => handleCreateFolderSubmit(e)}
                   style={styles.submitButton}
                 >
                   Submit

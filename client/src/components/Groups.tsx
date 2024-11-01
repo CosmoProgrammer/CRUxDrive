@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import FileStructureDisplay from "./HomePageComponents/FileStructureDisplay";
 import GroupCard from "./GroupCard";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
 
@@ -15,6 +16,7 @@ interface Group {
 const Groups = () => {
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [isPublic, setIsPublic] = useState(false);
@@ -69,6 +71,7 @@ const Groups = () => {
       if (response.ok) {
         let data = await response.json();
         setMyGroupsIAmIn(data);
+        return data;
       } else {
         console.error("Failed to get groups");
       }
@@ -123,6 +126,11 @@ const Groups = () => {
     });
     const reply = await response.json();
     console.log(reply);
+    refetchMyGroups();
+    if (isPublic) {
+      refetchPublicGroups();
+    }
+    setShowCreateGroup(false);
   };
 
   const handleShowPublicClick = () => {
@@ -132,6 +140,39 @@ const Groups = () => {
       setIsPublic(true);
     }
   };
+
+  const {
+    data: GroupsIAmIn,
+    isLoading: GroupsIAmInLoading,
+    isError: GroupsIAmInError,
+    refetch: refetchGroupsIAmIn,
+  } = useQuery({
+    queryKey: ["GroupsIAmIn"],
+    queryFn: () => fetchGroupIAmIn(token!),
+    refetchOnWindowFocus: false,
+  });
+
+  const {
+    data: PublicGroups,
+    isLoading: PublicGroupsLoading,
+    isError: PublicGroupsEror,
+    refetch: refetchPublicGroups,
+  } = useQuery({
+    queryKey: ["PublicGroups"],
+    queryFn: () => fetchPublicGroups(token!),
+    refetchOnWindowFocus: false,
+  });
+
+  const {
+    data: MyGroups,
+    isLoading: MyGroupsLoading,
+    isError: MyGroupsEror,
+    refetch: refetchMyGroups,
+  } = useQuery({
+    queryKey: ["MyGroups"],
+    queryFn: () => fetchMyGroups(token!),
+    refetchOnWindowFocus: false,
+  });
 
   return (
     <div style={styles.gridContainer}>
@@ -186,7 +227,12 @@ const Groups = () => {
         <div style={styles.groupCardGrid}>
           {myGroups.map((group) => (
             <div key={group.groupId} style={styles.groupItem}>
-              <GroupCard group={group} />
+              <GroupCard
+                group={group}
+                refetchGroupsIAmIn={refetchGroupsIAmIn}
+                refetchPublicGroups={refetchPublicGroups}
+                refetchMyGroups={refetchMyGroups}
+              />
             </div>
           ))}
         </div>
@@ -201,6 +247,9 @@ const Groups = () => {
               group={group}
               showButtons={false}
               showLeaveButton={true}
+              refetchGroupsIAmIn={refetchGroupsIAmIn}
+              refetchPublicGroups={refetchPublicGroups}
+              refetchMyGroups={refetchMyGroups}
             />
           </div>
         ))}
@@ -215,6 +264,9 @@ const Groups = () => {
               group={group}
               showButtons={false}
               showJoinButton={true}
+              refetchGroupsIAmIn={refetchGroupsIAmIn}
+              refetchPublicGroups={refetchPublicGroups}
+              refetchMyGroups={refetchMyGroups}
             />
           </div>
         ))}

@@ -13,6 +13,9 @@ interface Props {
   showButtons?: boolean;
   showJoinButton?: boolean;
   showLeaveButton?: boolean;
+  refetchMyGroups?: () => void;
+  refetchPublicGroups?: () => void;
+  refetchGroupsIAmIn?: () => void;
 }
 
 const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
@@ -22,6 +25,15 @@ const GroupCard = ({
   showButtons = true,
   showJoinButton = false,
   showLeaveButton = false,
+  refetchMyGroups = () => {
+    console.log("Refetfch my groups placeholder");
+  },
+  refetchPublicGroups = () => {
+    console.log("Refetfch Oublic Groups placeholder");
+  },
+  refetchGroupsIAmIn = () => {
+    console.log("Refetfch Groups I am in placeholder");
+  },
 }: Props) => {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
@@ -48,6 +60,8 @@ const GroupCard = ({
     });
     let data = await response.json();
     console.log(data);
+    refetchPublicGroups();
+    refetchGroupsIAmIn();
   };
 
   const handleLeaveGroup = async () => {
@@ -64,6 +78,8 @@ const GroupCard = ({
     });
     let data = await response.json();
     console.log(data);
+    refetchPublicGroups();
+    refetchGroupsIAmIn();
   };
 
   return (

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Fuse from "fuse.js";
 import FileStructureDisplay from "./HomePageComponents/FileStructureDisplay";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const SERVERPATH = process.env.REACT_APP_SERVER_PATH || "http://localhost:8000";
 
@@ -29,6 +30,8 @@ const Home = () => {
   };
 
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const token = localStorage.getItem("token");
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRaw, setShowRaw] = useState(false);
@@ -180,7 +183,6 @@ const Home = () => {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
     if (!token) {
       navigate("/login");
     } else {
@@ -215,15 +217,24 @@ const Home = () => {
         data.fileStructure.splice(0, 1);
         console.log(data);
         setFiles(data.fileStructure);
+        return data.fileStructure;
       } else {
         console.error("Failed to get file structure");
+        return null;
       }
     } catch (e) {
       console.error(e);
+      return null;
     } finally {
       setLoading(false);
     }
   };
+
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["fileStructure"],
+    queryFn: () => fetchFileStructure(token!),
+    refetchOnWindowFocus: false,
+  });
 
   const fetchBookmarks = async (token: string) => {
     const response = await fetch(`${SERVERPATH}/getBookmarks`, {
@@ -235,7 +246,19 @@ const Home = () => {
     });
     const reply = await response.json();
     setBookmarks(reply);
+    return reply;
   };
+
+  const {
+    data: bookmarkData,
+    isLoading: isLoadingBookmark,
+    isError: isErrorBookmark,
+    refetch: refetchBookmarks,
+  } = useQuery({
+    queryKey: ["bookmarks"],
+    queryFn: () => fetchBookmarks(token!),
+    refetchOnWindowFocus: false,
+  });
 
   const handleRawButton = () => {
     if (showRaw === false) {
@@ -343,6 +366,8 @@ const Home = () => {
             <FileStructureDisplay
               fileStructures={filteredFiles}
               showButtons={true}
+              refetch={refetch}
+              bookmarkRefetch={refetchBookmarks}
             />
           </div>
           <input
