@@ -12,6 +12,7 @@
     "express": "npm:express@^4.21.1",
     "google-auth-library": "npm:google-auth-library@^9.14.2",
     "jsonwebtoken": "npm:jsonwebtoken@^9.0.2",
+    "nodemailer": "npm:nodemailer@^6.9.16",
     "voidb": "npm:voidb@^2.0.3"
   },
   "nodeModulesDir": "auto"

@@ -16,6 +16,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import JWTMiddleware from "./middleware/JWT.ts";
 import bcrypt from "bcrypt";
+import nodemailer from "nodemailer";
 //import { group } from "console";
 
 const app: Express = express();
@@ -29,6 +30,14 @@ const JWT_SECRET = Deno.env.get("JWT_SECRET");
 const BUCKET = Deno.env.get("BUCKET");
 const accessKeyId = Deno.env.get("accessKeyId") || "";
 const secretAccessKey = Deno.env.get("secretAccessKey") || "";
+
+const mailer = nodemailer.createTransport({
+  service: "Gmail",
+  auth: {
+    user: Deno.env.get("email") || "",
+    pass: Deno.env.get("password") || "",
+  },
+});
 
 interface File {
   key: string | undefined;
@@ -287,28 +296,33 @@ app.post("/validatePassword", async (req: Request, res: Response) => {
   }
 });
 
-app.post("/shareToEmail", async (req: Request, res: Response) => {
-  const { items, email } = req.body;
-  console.log("HI");
-  console.log(items, email);
-  const ids = voidb(
-    `select table "users" columns "['email', 'userId']" where "email === '${email}'"`
-  )[0]["data"];
-  console.log(ids);
-  if (ids.length === 0) {
-    return res.status(404).json("Email Not Found");
+app.post(
+  "/shareToEmail",
+  JWTMiddleware,
+  async (req: Request, res: Response) => {
+    const { user, items, email } = req.body;
+    console.log("HI");
+    console.log(items, email);
+    const ids = voidb(
+      `select table "users" columns "['email', 'userId']" where "email === '${email}'"`
+    )[0]["data"];
+    //console.log(ids);
+    if (ids.length === 0) {
+      return res.status(404).json("Email Not Found");
+    }
+    const id = ids[0]["userId"];
+    const emailMessage = formatSharedItemsMessage(items, user.email);
+    sendShareNotificationEmail(email, emailMessage, user.email);
+    console.log(
+      voidb(
+        `insert "${JSON.stringify(
+          items.map((element: any) => [element])
+        ).replace(/"/g, "'")}" into "${id}_FilesFolders" columns "*";`
+      )
+    );
+    return res.status(200).json("Shared");
   }
-  const id = ids[0]["userId"];
-  console.log(
-    voidb(
-      `insert "${JSON.stringify(items.map((element: any) => [element])).replace(
-        /"/g,
-        "'"
-      )}" into "${id}_FilesFolders" columns "*";`
-    )
-  );
-  return res.status(200).json("Shared");
-});
+);
 
 app.get(
   "/getSharedFilesFolders",
@@ -738,4 +752,47 @@ async function getFileInfo(key: string) {
     console.error(`Error retrieving file info for ${key}:`, error);
     return null;
   }
+}
+
+async function sendShareNotificationEmail(
+  recipientEmail: string,
+  content: string,
+  senderEmail: string
+) {
+  try {
+    await mailer.sendMail({
+      from: Deno.env.get("email") || "",
+      to: recipientEmail,
+      subject: "Object(s) Shared with You",
+      text: `${senderEmail} has shared object(s) with you`,
+      html: content,
+    });
+    console.log(`Email sent to ${recipientEmail}`);
+  } catch (error) {
+    console.error("Error sending email:", error);
+  }
+}
+
+function formatSharedItemsMessage(paths: string[], senderName: string): string {
+  const files: string[] = [];
+  const folders: string[] = [];
+  console.log(paths);
+  paths.forEach((path) => {
+    if (typeof path === "string") {
+      const parts = path.split("/");
+      const name = parts.filter(Boolean).pop() || "";
+      if (path.endsWith("/")) {
+        folders.push(name);
+      } else {
+        files.push(name);
+      }
+    }
+  });
+  const filesList = files.map((file) => `<li>${file}</li>`).join("");
+  const foldersList = folders.map((folder) => `<li>${folder}</li>`).join("");
+  return `<p>The files:</p>
+            <ul>${filesList}</ul>
+            <p>And the folders:</p>
+            <ul>${foldersList}</ul>
+            <p>were shared with you by <b>${senderName}</b>.</p>`;
 }
