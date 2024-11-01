@@ -312,7 +312,7 @@ app.post(
     }
     const id = ids[0]["userId"];
     const emailMessage = formatSharedItemsMessage(items, user.email);
-    sendShareNotificationEmail(email, emailMessage, user.email);
+    sendShareNotificationEmail(email, emailMessage, user.email, false);
     console.log(
       voidb(
         `insert "${JSON.stringify(
@@ -624,6 +624,7 @@ app.post(
     const group = voidb(
       `select table "groups" columns "*" where "groupId === '${groupId}'";`
     )[0]["data"];
+    const groupName = group[0].name;
     const flattenedGroup = JSON.stringify(
       group.map(({ groupId, name, owner, isPublic }) => [
         groupId,
@@ -634,6 +635,12 @@ app.post(
     ).replace(/"/g, "'");
     console.log(
       voidb(`insert "${flattenedGroup}" into "${id}_Groups" columns "*";`)
+    );
+    sendShareNotificationEmail(
+      email,
+      `<p>${user.email} has added you to private group ${groupName}</p>`,
+      user.email,
+      true
     );
     return res.status(200).json("added group");
   }
@@ -757,14 +764,17 @@ async function getFileInfo(key: string) {
 async function sendShareNotificationEmail(
   recipientEmail: string,
   content: string,
-  senderEmail: string
+  senderEmail: string,
+  group: boolean
 ) {
   try {
     await mailer.sendMail({
       from: Deno.env.get("email") || "",
       to: recipientEmail,
       subject: "Object(s) Shared with You",
-      text: `${senderEmail} has shared object(s) with you`,
+      text: group
+        ? `${senderEmail} has added you to private group`
+        : `${senderEmail} has shared object(s) with you`,
       html: content,
     });
     console.log(`Email sent to ${recipientEmail}`);
